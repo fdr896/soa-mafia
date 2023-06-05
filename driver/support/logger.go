@@ -12,11 +12,20 @@ import (
 
 const LOGS_DIR = ".logs"
 
-func InitServerLogger() {
+func initStdoutLogger() {
 	zlog.Logger = zlog.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 }
 
-func InitClientLogger(username string) error {
+func InitServerLogger() {
+    initStdoutLogger()
+}
+
+func InitClientLogger(username string, auto bool) error {
+    if auto {
+        initStdoutLogger()
+        return nil
+    }
+
     if err := os.MkdirAll(LOGS_DIR, 0744); err != nil {
         panic(err)
     }

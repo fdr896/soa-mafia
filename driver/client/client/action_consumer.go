@@ -35,14 +35,14 @@ func actionConsumer(c *client) error {
 		}
 
         zlog.Info().Str("msg", action.String()).Msg("received msg")
-        if err := handleReceivedActionResp(c, action); err != nil {
+        if err := handleReceivedActionResp(c, action, c.auto); err != nil {
             zlog.Error().Err(err).Str("action", action.String()).Msg("failed to handle received action")
             return err
         }
     }
 }
 
-func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
+func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse, auto bool) error {
     switch action.GetType() {
     case mafiapb.ActionResponse_ASSIGN_USER_ID:
         assignUserId := action.GetAssignUserId()
@@ -89,7 +89,7 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
             fmt.Println("Player will be killed")
         } else if errMsg := result.GetError(); len(errMsg) > 0 {
             fmt.Printf("Failed to kill the player: %s\n", errMsg)
-            if err := c.acceptMafiaKillUsername(); err != nil {
+            if err := c.acceptMafiaKillUsername(c.auto); err != nil {
                 return err
             }
         } else {
@@ -102,7 +102,8 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
             fmt.Printf("Investigation result: %s\n", investigationResult)
 
             if investigationResult == "mafia" {
-                if err := c.acceptComissarPublishResultDesire(comissarInvestigationResult.GetMafiaNickname()); err != nil {
+                mafiaNickname := comissarInvestigationResult.GetMafiaNickname()
+                if err := c.acceptComissarPublishResultDesire(mafiaNickname, c.auto); err != nil {
                     return err
                 }
             } else {
@@ -122,7 +123,7 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
             }
         } else if errMsg := result.GetError(); len(errMsg) > 0 {
             fmt.Printf("Failed to invesigate the player: %s\n", errMsg)
-            if err := c.acceptComissarInvestigateUsername(); err != nil {
+            if err := c.acceptComissarInvestigateUsername(c.auto); err != nil {
                 return err
             }
         } else {
@@ -153,11 +154,11 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
 
         switch nightStarted.GetRole() {
         case mafiapb.ActionResponse_MAFIA:
-            if err := c.acceptMafiaKillUsername(); err != nil {
+            if err := c.acceptMafiaKillUsername(c.auto); err != nil {
                 return err
             }
         case mafiapb.ActionResponse_COMMISAR:
-            if err := c.acceptComissarInvestigateUsername(); err != nil {
+            if err := c.acceptComissarInvestigateUsername(c.auto); err != nil {
                 return err
             }
         case mafiapb.ActionResponse_CIVILIAN:
@@ -170,17 +171,23 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
     return nil
 }
 
-func (c *client) acceptMafiaKillUsername() error {
+func (c *client) acceptMafiaKillUsername(auto bool) error {
     var nickname string
-    for {
-        fmt.Print("Type nickname to kill: ")
-        _, err := fmt.Scanln(&nickname)
-        nickname = strings.TrimSpace(nickname)
-        if err == nil && len(nickname) > 0 {
-            break
+
+    if auto {
+        nickname = c.chooseRandomPlayer()
+        zlog.Info().Str("nickname", nickname).Str("name", c.username).Msg("mafia bot votes")
+    } else {
+        for {
+            fmt.Print("Type nickname to kill: ")
+            _, err := fmt.Scanln(&nickname)
+            nickname = strings.TrimSpace(nickname)
+            if err == nil && len(nickname) > 0 {
+                break
+            }
         }
+        nickname = strings.Split(strings.TrimSpace(nickname), " ")[0]
     }
-    nickname = strings.Split(strings.TrimSpace(nickname), " ")[0]
 
     killPlayer := &mafiapb.Action{
         Type: mafiapb.Action_KILL_PLAYER_BY_MAFIA,
@@ -198,17 +205,22 @@ func (c *client) acceptMafiaKillUsername() error {
     return nil
 }
 
-func (c *client) acceptComissarInvestigateUsername() error {
+func (c *client) acceptComissarInvestigateUsername(auto bool) error {
     var nickname string
-    for {
-        fmt.Print("Type nickname to investigate: ")
-        _, err := fmt.Scanln(&nickname)
-        nickname = strings.TrimSpace(nickname)
-        if err == nil && len(nickname) > 0 {
-            break
+    if auto {
+        nickname = c.chooseRandomPlayer()
+        zlog.Info().Str("nickname", nickname).Str("name", c.username).Msg("commissar bot investigates")
+    } else {
+        for {
+            fmt.Print("Type nickname to investigate: ")
+            _, err := fmt.Scanln(&nickname)
+            nickname = strings.TrimSpace(nickname)
+            if err == nil && len(nickname) > 0 {
+                break
+            }
         }
+        nickname = strings.Split(strings.TrimSpace(nickname), " ")[0]
     }
-    nickname = strings.Split(strings.TrimSpace(nickname), " ")[0]
 
     investigatePlayer := &mafiapb.Action{
         Type: mafiapb.Action_INVESTIGATE_MAFIA,
@@ -226,25 +238,30 @@ func (c *client) acceptComissarInvestigateUsername() error {
     return nil
 }
 
-func (c *client) acceptComissarPublishResultDesire(mafiaNickname string) error {
+func (c *client) acceptComissarPublishResultDesire(mafiaNickname string, auto bool) error {
     var desire string
-    for {
-        fmt.Println("\nType 'yes' or 'no' whether you want to publish the results: ")
-        var yesOrNo string
+    
+    if auto {
+        desire = "yes"
+    } else {
         for {
-            _, err := fmt.Scanln(&yesOrNo)
-            yesOrNo = strings.TrimSpace(yesOrNo)
-            if err == nil && len(yesOrNo) > 0 {
-                break
+            fmt.Println("\nType 'yes' or 'no' whether you want to publish the results: ")
+            var yesOrNo string
+            for {
+                _, err := fmt.Scanln(&yesOrNo)
+                yesOrNo = strings.TrimSpace(yesOrNo)
+                if err == nil && len(yesOrNo) > 0 {
+                    break
+                }
             }
-        }
 
-        if yesOrNo != "yes" && yesOrNo != "no" {
-            continue
-        }
+            if yesOrNo != "yes" && yesOrNo != "no" {
+                continue
+            }
 
-        desire = yesOrNo
-        break
+            desire = yesOrNo
+            break
+        }
     }
 
     var publishResult bool
