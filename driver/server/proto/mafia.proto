@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+option go_package = "./mafia;mafia";
+
+package mafia;
+
+service MafiaDriver {
+  rpc DoAction(stream Action) returns (stream ActionResponse) {}
+}
+
+message Action {
+  enum Type {
+    START_SESSION = 0;
+    PLAYER_ROLE = 1;
+    GAME_STATE = 2;
+    PLAYER_NICKS = 3;
+    VOTE = 4;
+    KILL_PLAYER_BY_MAFIA = 5;
+    INVESTIGATE_MAFIA = 6;
+    INTERRUPT_GAME = 7;
+    INVESTIGATION_RESULT = 8;
+  }
+
+  message StartSession { string nickname = 1; }
+  message PlayerRole { string user_id = 1; }
+  message GameState { string user_id = 1; }
+  message PlayersNicks { string user_id = 1; }
+  message Vote {
+    string user_id = 1;
+    string mafia_username = 2;
+  }
+  message KillPlayerByMafia {
+    string user_id = 1;
+    string player_username = 2;
+  }
+  message InvestigateMafia {
+    string user_id = 1;
+    string mafia_username = 2;
+  }
+  message InterruptGame { string user_id = 1; }
+  message InvestigationResult {
+    string user_id = 1;
+    bool publish_result = 2;
+  }
+
+  Type type = 1;
+  oneof action {
+    // prepare phase
+    StartSession start_session = 2;
+
+    // info queries
+    PlayerRole player_role = 3;
+    GameState game_state = 4;
+    PlayersNicks player_nicks = 5;
+
+    // game actions
+    Vote vote = 6;
+    KillPlayerByMafia kill_player_by_mafia = 7;
+    InvestigateMafia investiage_mafia = 8;
+    InterruptGame interrupt_game = 9;
+    InvestigationResult investigation_result = 10;
+  }
+}
+
+message ActionResponse {
+  enum Type {
+    ASSIGN_USER_ID = 0;
+    PLAYER_ROLE = 1;
+    GAME_STATE = 2;
+    PLAYER_NICKS = 3;
+    VOTE_RESULT = 4;
+    MAFIA_KILL_RESULT = 5;
+    COMMISAR_INVESTIGATION_RESULT = 6;
+    START_GAME = 7;
+    END_GAME = 8;
+    DAY_STARTED = 9;
+    NIGHT_STARTED = 10;
+    ROUND_RESULT = 11;
+  }
+
+  enum EPlayerRole {
+    MAFIA = 0;
+    COMMISAR = 1;
+    CIVILIAN = 2;
+    SPIRIT = 3;
+  }
+  enum ETimeOfDay {
+    DAY = 0;
+    NIGHT = 1;
+  }
+
+  // Users' actions responses
+  message ActionResult {
+    oneof result {
+      string success = 1;
+      string error = 2;
+    }
+  }
+
+  message AssignUserId { ActionResult result = 1; }
+
+  message PlayerRole { EPlayerRole role = 1; }
+  message GameState {
+    ETimeOfDay time_of_day = 1;
+    int32 alive_players = 2;
+  }
+  message PlayerNicks { repeated string nicks = 1; }
+
+  message VoteResult { ActionResult result = 1; }
+  message MafiaKillResult { ActionResult result = 1; }
+  message CommisarInvestigationResult {
+    ActionResult result = 1;
+    string mafiaNickname = 2;
+  }
+
+  // game status responses
+  message StartGame { string start_game = 1; }
+  message EndGame { string game_result = 1; }
+
+  // day and night transitions
+  message DayStarted { string user_msg = 1; }
+  message NightStarted {
+    string user_msg = 1;
+    EPlayerRole role = 2;
+  }
+
+  // round result
+  message RoundResult { string user_msg = 2; }
+
+  Type type = 1;
+  oneof action_result {
+    // prepare phase
+    AssignUserId assign_user_id = 2;
+
+    // user info queries
+    PlayerRole role = 3;
+    GameState game_state = 4;
+    PlayerNicks player_nicks = 5;
+
+    // game actions results
+    VoteResult vote_result = 6;
+    MafiaKillResult mafia_kill_result = 7;
+    CommisarInvestigationResult comissare_investigation_result = 8;
+
+    // game start and finish
+    StartGame start_game = 9;
+    EndGame end_game = 10;
+
+    // day and night transitions
+    DayStarted day_started = 11;
+    NightStarted night_started = 12;
+
+    // round result
+    RoundResult result = 13;
+  }
+}
