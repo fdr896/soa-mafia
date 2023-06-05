@@ -14,6 +14,8 @@ type client struct {
     username string
     userId string
 
+    alivePlayers []string
+
     grpcClient mafiapb.MafiaDriverClient
     stream mafiapb.MafiaDriver_DoActionClient
 
@@ -47,6 +49,7 @@ func NewClient(mode, username string, conn *grpc.ClientConn) (*client, error) {
 
     return &client{
         username: username,
+        alivePlayers: make([]string, 0),
         grpcClient: mafiapb.NewMafiaDriverClient(conn),
         actionProducer: actionProducer,
         waitActionResponse: make(chan interface{}, 1),
@@ -89,4 +92,13 @@ func (c *client) StartPlaying() error {
     }()
 
     return <-errorChan
+}
+
+func (c *client) GetAlivePlayers() *[]string {
+    return &c.alivePlayers
+}
+
+func (c *client) SetAlivePlayers(nicknames []string) *client {
+    c.alivePlayers = nicknames
+    return c
 }

@@ -64,7 +64,7 @@ Interfaction With The Interface:
     - 'rules' (rules again)`)
 }
 
-func (i *interactor) StartPlaying(waitActionResp chan interface{}) {
+func (i *interactor) StartPlaying(waitActionResp chan interface{}, nicknames *[]string) {
     var command string
     for {
         fmt.Print("\nCommand: ")
@@ -73,7 +73,7 @@ func (i *interactor) StartPlaying(waitActionResp chan interface{}) {
             continue
         }
 
-        cmd, errorString := Parse(command)
+        cmd, errorString := Parse(command, nicknames)
         if cmd == nil{
             fmt.Printf("Wrong command: %s\n", errorString)
         } else {

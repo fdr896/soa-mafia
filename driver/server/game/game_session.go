@@ -9,16 +9,15 @@ import (
 	zlog "github.com/rs/zerolog/log"
 )
 
-const GAME_PLAYERS = 4
-
 const (
 	DAY = 0
 	NIGHT = 1
 )
 
-func NewGameSession(id int) *GameSession {
+func NewGameSession(id, gamePlayers int) *GameSession {
 	return &GameSession{
 		Id: id,
+        GamePlayers: gamePlayers,
 		players: make(map[string]*player),
 		playerByNickname: make(map[string]*player),
 	}
@@ -26,6 +25,7 @@ func NewGameSession(id int) *GameSession {
 
 type GameSession struct {
 	Id int
+    GamePlayers int
 
 	currentDay int
 	timeOfDay int // [DAY|NIGHT]
@@ -47,7 +47,7 @@ type GameSession struct {
 
 // Needs to find a not started game session
 func (gs *GameSession) IsStarted() bool {
-	return len(gs.players) == GAME_PLAYERS
+	return len(gs.players) == gs.GamePlayers
 }
 
 func (gs *GameSession) IsMafia(id string) bool {
@@ -70,7 +70,7 @@ func (gs *GameSession) AddPlayer(id string, nickname string) (bool, bool) {
 	gs.playerByNickname[nickname] = player
 	gs.alivePlayers += 1
 
-	return len(gs.players) == GAME_PLAYERS, false
+	return len(gs.players) == gs.GamePlayers, false
 }
 
 func (gs *GameSession) GetTimeOfDay() int {
@@ -112,6 +112,9 @@ func (gs *GameSession) GetPlayerNicknames() []string {
 			nicknames = append(nicknames, player.nickname)
 		}
 	}
+    sort.Slice(nicknames, func(i, j int) bool {
+        return nicknames[i] < nicknames[j]
+    })
 
 	return nicknames
 }
@@ -270,6 +273,11 @@ func (gs *GameSession) getMostFrequentVote() (string, bool) {
         return gs.votesAgainstPlayer[ids[i]] > gs.votesAgainstPlayer[ids[j]]
     })
 
+    zlog.Info().Interface("ids", ids).Msg("player ids")
+    zlog.Info().Interface("votes", gs.votesAgainstPlayer).Msg("votes")
+    zlog.Info().Int("vote 1", gs.votesAgainstPlayer[ids[0]]).Msg("most frequent")
+    zlog.Info().Int("vote 2", gs.votesAgainstPlayer[ids[1]]).Msg("second most frequent")
+
     if gs.votesAgainstPlayer[ids[0]] == gs.votesAgainstPlayer[ids[1]] {
         return "nobody was killed", false
     } else {
@@ -363,6 +371,7 @@ func (gs *GameSession) Vote(voterId string, suspectNickname string) (bool, error
     zlog.Info().Str("voter", voter.nickname).Str("suspect", suspect.nickname).Msg("Vote")
 
 	gs.votes += 1
+    gs.votesAgainstPlayer[suspect.id] += 1
 	if gs.votes == gs.alivePlayers {
 		gs.StartNight()
 		return true, nil

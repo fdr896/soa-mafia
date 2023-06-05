@@ -62,13 +62,13 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
         c.waitActionResponse <- struct{}{}
     case mafiapb.ActionResponse_GAME_STATE:
         gameState := action.GetGameState()
-        fmt.Printf("Alive players: %d\nCurrently is %s\n",
+        fmt.Printf("Alive players: %d\nCurrently is %d day\n",
             gameState.GetAlivePlayers(),
-            mafiapb.ActionResponse_ETimeOfDay_name[int32(gameState.GetTimeOfDay())])
+            gameState.GetCurrentDay())
         c.waitActionResponse <- struct{}{}
     case mafiapb.ActionResponse_PLAYER_NICKS:
         playerNicks := action.GetPlayerNicks()
-        fmt.Printf("Alive player nicks: %+q\n", playerNicks.GetNicks())
+        fmt.Printf("Alive players nicks: %+q\n", playerNicks.GetNicks())
         c.waitActionResponse <- struct{}{}
     case mafiapb.ActionResponse_VOTE_RESULT:
         voteResult := action.GetVoteResult()
@@ -132,6 +132,8 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
         c.waitInteractorStartMsgs.Wait()
         startGame := action.GetStartGame()
         fmt.Println(startGame.GetStartGame())
+        fmt.Printf("Game players nicknames: %+q\n", startGame.GetNicknames())
+        c.SetAlivePlayers(startGame.GetNicknames())
         c.waitAllUsersConnected.Done()
     case mafiapb.ActionResponse_END_GAME:
         endGame := action.GetEndGame()
@@ -141,6 +143,8 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse) error {
     case mafiapb.ActionResponse_DAY_STARTED:
         dayStarted := action.GetDayStarted()
         fmt.Printf("Morning started: %s\n", dayStarted.GetUserMsg())
+        fmt.Printf("Alive players nicknames: %+q\n", dayStarted.GetNicknames())
+        c.SetAlivePlayers(dayStarted.GetNicknames())
 
         c.waitActionResponse <- struct{}{}
     case mafiapb.ActionResponse_NIGHT_STARTED:

@@ -12,7 +12,10 @@ import (
 type Server struct {
 	mafiapb.UnimplementedMafiaDriverServer
 
+    gamePlayers int
+
 	playerById map[string]*player
+    nicknames map[string]interface{}
     idByNickname map[string]string
 	sessions map[*game.GameSession]interface{}
 	sessionByUserId map[string]*game.GameSession
@@ -26,9 +29,11 @@ type player struct {
 	stream mafiapb.MafiaDriver_DoActionServer
 }
 
-func NewServer() *Server {
+func NewServer(gamePlayers int) *Server {
 	return &Server{
+        gamePlayers: gamePlayers,
 		playerById: make(map[string]*player),
+        nicknames: make(map[string]interface{}),
         idByNickname: make(map[string]string),
 		sessions: make(map[*game.GameSession]interface{}),
 		sessionByUserId: make(map[string]*game.GameSession),

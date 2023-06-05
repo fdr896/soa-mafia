@@ -5,6 +5,9 @@ import (
 	"driver/client/client"
 	"fmt"
 	"log"
+	"math/rand"
+	"net"
+	"time"
 
 	"os"
 
@@ -13,24 +16,30 @@ import (
 )
 
 func main() {
-    if len(os.Args) != 4 {
-        log.Fatalf("Usage: go run client/cmd/main.go [manual|auto] <username> <port>\n")
-    }
-    mode := os.Args[1]
+    rand.Seed(time.Now().Unix())
+    mode := os.Getenv("CLIENT_MODE")
     if mode != "manual" && mode != "auto" {
         fmt.Println("Wrong mode")
-        log.Fatalf("Usage: go run client/cmd/main.go [manual|auto] <username> <port>\n")
+        log.Fatalln("Set up CLIENT_MODE to 'manual' or 'auto'")
     }
-    username := os.Args[2]
-    port := os.Args[3]
+    username := os.Getenv("USERNAME")
+    if len(username) == 0 {
+        log.Fatalln("Set up not empty USERNAME")
+    }
+    serverPort := os.Getenv("SERVER_PORT")
+    serverHost := os.Getenv("SERVER_HOST")
+    if len(serverHost) == 0 {
+        serverHost = "localhost"
+    }
 
-    fmt.Printf("connecting to grpc server by port [%s]...\n", port)
-	conn, err := grpc.Dial(fmt.Sprintf(":%s", port), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+    serverEndpoint := net.JoinHostPort(serverHost, serverPort)
+    fmt.Printf("connecting to grpc server by endpoint [%s]...\n", serverEndpoint)
+	conn, err := grpc.Dial(serverEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
         log.Fatalf("failed to connect to grpc server: %s\n", err.Error())
 	}
 	defer conn.Close()
-    fmt.Printf("connected to grpc server by port [%s]\n", port)
+    fmt.Printf("connected to grpc server on endpoint [%s]\n", serverEndpoint)
 
     client, err  := client.NewClient(mode, username, conn)
     if err != nil {

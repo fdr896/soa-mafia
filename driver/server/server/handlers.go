@@ -13,11 +13,33 @@ func (s *Server) nextPlayerId() string {
 	return strconv.Itoa(len(s.playerById))
 }
 
-func (s *Server) addPlayer(p *player, session *game.GameSession) {
+func (s *Server) addPlayer(p *player, nickname string, session *game.GameSession) (bool, bool) {
+    if _, has := s.nicknames[nickname]; has {
+        return true, false
+    }
+    started, alreadyExists := session.AddPlayer(p.id, nickname)
+    if alreadyExists {
+        return true, false
+    }
 	s.playerById[p.id] = p
+    s.nicknames[nickname] = struct{}{}
     s.idByNickname[session.GetPlayerNickname(p.id)] = p.id
 	s.sessionPlayers[session] = append(s.sessionPlayers[session], p)
 	s.sessionByUserId[p.id] = session
+
+    return false, started
+}
+
+func (s *Server) removeGame(session *game.GameSession) {
+    nicknames := session.GetAllPlayerNicknames()
+    for _, nickname := range nicknames {
+        delete(s.nicknames, nickname)
+        id := s.idByNickname[nickname]
+        delete(s.playerById, id)
+        delete(s.sessionByUserId, id)
+        delete(s.idByNickname, nickname)
+    }
+    delete(s.sessionPlayers, session)
 }
 
 // Returns true if game started
@@ -33,8 +55,11 @@ func (s *Server) handleStartSession(req *mafiapb.Action_StartSession, stream maf
 	playerId := s.nextPlayerId()
 	logPref.Str("player id", playerId).Msg("user assigned an id")
 
-
-	started, alreadyExists := userSession.AddPlayer(playerId, username)
+	newPlayer := &player{
+		id: playerId,
+		stream: stream,
+	}
+	alreadyExists, started := s.addPlayer(newPlayer, username, userSession)
     if alreadyExists {
         assignUserMessage := &mafiapb.ActionResponse{
             Type: mafiapb.ActionResponse_ASSIGN_USER_ID,
@@ -54,13 +79,8 @@ func (s *Server) handleStartSession(req *mafiapb.Action_StartSession, stream maf
         }
         return nil
     }
-	logPref.Bool("game started", started).Msg("game state")
 
-	newPlayer := &player{
-		id: playerId,
-		stream: stream,
-	}
-	s.addPlayer(newPlayer, userSession)
+	logPref.Bool("game started", started).Msg("game state")
 
 	assignUserMessage := &mafiapb.ActionResponse{
 		Type: mafiapb.ActionResponse_ASSIGN_USER_ID,
@@ -94,6 +114,7 @@ func (s *Server) handleStartSession(req *mafiapb.Action_StartSession, stream maf
                             "- your vote won't be counted\n" +
                             "You can familiarize yourself with the interface",
                             playerRole, userSession.Id),
+                        Nicknames: userSession.GetPlayerNicknames(),
                     },
                 },
 		    }
@@ -129,13 +150,13 @@ func (s *Server) handleGameStateRequest(p *player) error {
     logPref.Msg("accepted game state request")
 
     session := s.sessionByUserId[p.id]
-    timeOfDay := session.GetTimeOfDay()
+    currentDay := session.GetDay()
     alivePlayers := session.GetAlivePlayersCount()
     gameStateMessage := &mafiapb.ActionResponse{
         Type: mafiapb.ActionResponse_GAME_STATE,
         ActionResult: &mafiapb.ActionResponse_GameState_{
             GameState: &mafiapb.ActionResponse_GameState{
-                TimeOfDay: mafiapb.ActionResponse_ETimeOfDay(timeOfDay),
+                CurrentDay: int32(currentDay),
                 AlivePlayers: int32(alivePlayers),
             },
         },
@@ -303,6 +324,7 @@ func (s *Server) handleInvestigationResultEvent(commissar *player, publishResult
 
 func (s *Server) handleMafiaKillPlayerRequest(mafiaId string, p *player) error {
     mafia := s.playerById[mafiaId]
+    session := s.sessionByUserId[mafiaId]
 
     if p == nil {
         wrongVoteMessage := &mafiapb.ActionResponse{
@@ -324,7 +346,6 @@ func (s *Server) handleMafiaKillPlayerRequest(mafiaId string, p *player) error {
         return nil
     }
 
-    session := s.sessionByUserId[mafiaId]
     startDay, wrongVoteErr := session.AcceptMafiaVote(mafiaId, p.id)
     if wrongVoteErr != nil {
         wrongVoteMessage := &mafiapb.ActionResponse{
@@ -485,11 +506,12 @@ func (s *Server) handleStartDayEvent(session *game.GameSession) error {
         dayStartedMessage := &mafiapb.ActionResponse{
             Type: mafiapb.ActionResponse_DAY_STARTED,
             ActionResult: &mafiapb.ActionResponse_DayStarted_{
-                DayStarted: &mafiapb.ActionResponse_DayStarted{
-                    UserMsg: fmt.Sprintf(
-                        "Day %d passed\n" +
-                        "Procceed to vote to find the mafia!",
-                    session.GetDay() - 1),
+                    DayStarted: &mafiapb.ActionResponse_DayStarted{
+                        UserMsg: fmt.Sprintf(
+                            "Day %d passed\n" +
+                            "Procceed to vote to find the mafia!",
+                        session.GetDay() - 1),
+                    Nicknames: session.GetPlayerNicknames(),
                 },
             },
         }
@@ -510,6 +532,8 @@ func (s *Server) handleStartDayEvent(session *game.GameSession) error {
         if err := s.sendMessageToGameSession(session, endGameMessage); err != nil {
             return err
         }
+
+        s.removeGame(session)
     }
 
     return nil

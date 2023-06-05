@@ -84,10 +84,6 @@ message ActionResponse {
     CIVILIAN = 2;
     SPIRIT = 3;
   }
-  enum ETimeOfDay {
-    DAY = 0;
-    NIGHT = 1;
-  }
 
   // Users' actions responses
   message ActionResult {
@@ -101,7 +97,7 @@ message ActionResponse {
 
   message PlayerRole { EPlayerRole role = 1; }
   message GameState {
-    ETimeOfDay time_of_day = 1;
+    int32 current_day = 1;
     int32 alive_players = 2;
   }
   message PlayerNicks { repeated string nicks = 1; }
@@ -114,11 +110,17 @@ message ActionResponse {
   }
 
   // game status responses
-  message StartGame { string start_game = 1; }
+  message StartGame {
+    string start_game = 1;
+    repeated string nicknames = 2;
+  }
   message EndGame { string game_result = 1; }
 
   // day and night transitions
-  message DayStarted { string user_msg = 1; }
+  message DayStarted {
+    string user_msg = 1;
+    repeated string nicknames = 2;
+  }
   message NightStarted {
     string user_msg = 1;
     EPlayerRole role = 2;
