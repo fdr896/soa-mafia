@@ -368,7 +368,7 @@ func (gs *GameSession) Vote(voterId string, suspectNickname string) (bool, error
 		return false, err
 	}
 
-    zlog.Info().Str("voter", voter.nickname).Str("suspect", suspect.nickname).Msg("Vote")
+    zlog.Info().Str("voter", voter.nickname).Str("suspect", suspect.nickname).Msg("vote")
 
 	gs.votes += 1
     gs.votesAgainstPlayer[suspect.id] += 1

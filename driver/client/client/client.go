@@ -13,6 +13,7 @@ import (
 type client struct {
     username string
     userId string
+    auto bool
 
     alivePlayers []string
 
@@ -32,8 +33,7 @@ type client struct {
 type actionProducerFunctor func (*client) error
 
 func NewClient(mode, username string, conn *grpc.ClientConn) (*client, error) {
-
-    if err := support.InitClientLogger(username);  err != nil {
+    if err := support.InitClientLogger(username, mode == "auto");  err != nil {
         return nil, err
     }
 
@@ -49,6 +49,7 @@ func NewClient(mode, username string, conn *grpc.ClientConn) (*client, error) {
 
     return &client{
         username: username,
+        auto: mode == "auto",
         alivePlayers: make([]string, 0),
         grpcClient: mafiapb.NewMafiaDriverClient(conn),
         actionProducer: actionProducer,
