@@ -77,7 +77,7 @@ func manualActionProducer(c *client) error {
         }
     }()
 
-    cmdCli.StartPlaying(c.waitActionResponse)
+    cmdCli.StartPlaying(c.waitActionResponse, c.GetAlivePlayers())
 
     return <-errChan
 }

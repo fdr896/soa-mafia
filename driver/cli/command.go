@@ -27,7 +27,7 @@ func (c *Command) GetArg(pos int) string {
     return c.cmdArgs[pos]
 }
 
-func Parse(command string) (*Command, string) {
+func Parse(command string, nicknames *[]string) (*Command, string) {
     words := strings.Split(strings.TrimSpace(command), " ")
 
     if len(words) == 0 {
@@ -39,7 +39,7 @@ func Parse(command string) (*Command, string) {
         if cmdType == CMD_VOTE {
             var suspect string
             for {
-                fmt.Print("Enter suspect username: ")
+                fmt.Printf("Enter suspect username (%v): ", *nicknames)
                 _, err := fmt.Scanln(&suspect)
                 suspect = strings.TrimSpace(suspect)
                 if len(suspect) > 0 && err == nil {
