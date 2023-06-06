@@ -14,7 +14,7 @@ const (
 	NIGHT = 1
 )
 
-func NewGameSession(id, gamePlayers int) *GameSession {
+func NewGameSession(id string, gamePlayers int) *GameSession {
 	return &GameSession{
 		Id: id,
         GamePlayers: gamePlayers,
@@ -24,7 +24,7 @@ func NewGameSession(id, gamePlayers int) *GameSession {
 }
 
 type GameSession struct {
-	Id int
+	Id string
     GamePlayers int
 
 	currentDay int

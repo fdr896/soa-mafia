@@ -76,6 +76,11 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse, auto bo
         if successMsg := result.GetSuccess(); len(successMsg) > 0 {
             fmt.Printf("Vote result: %s\n", successMsg)
         } else if errMsg := result.GetError(); len(errMsg) > 0 {
+            if strings.HasPrefix(errMsg, "spirit can not vote") {
+                c.spirit = true
+                return nil
+            }
+
             fmt.Printf("Vote result: %s\n", errMsg)
             fmt.Println("Vote again")
             c.waitActionResponse <- struct{}{}

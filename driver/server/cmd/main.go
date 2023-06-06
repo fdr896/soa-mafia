@@ -3,9 +3,11 @@ package main
 import (
 	"driver/support"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
+	"time"
 
 	mafiapb "driver/server/proto"
 	"driver/server/server"
@@ -17,6 +19,8 @@ import (
 const DEFAULT_SESSION_PLAYERS = 4
 
  func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	port := os.Getenv("PORT")
 
 	var sessionPlayers int

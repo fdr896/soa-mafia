@@ -4,13 +4,13 @@ import (
 	"driver/server/game"
 	mafiapb "driver/server/proto"
 	"fmt"
-	"strconv"
 
+	"github.com/beevik/guid"
 	zlog "github.com/rs/zerolog/log"
 )
 
 func (s *Server) nextPlayerId() string {
-	return strconv.Itoa(len(s.playerById))
+    return "usr_" + guid.NewString()
 }
 
 func (s *Server) addPlayer(p *player, nickname string, session *game.GameSession) (bool, bool) {
@@ -50,7 +50,7 @@ func (s *Server) handleStartSession(req *mafiapb.Action_StartSession, stream maf
 	logPref.Msg("accepted start session request")
 
 	userSession := s.findOrCreatedNotStartedSession()
-	logPref.Int("session id", userSession.Id).Msg("user added to session. waiting for game start")
+	logPref.Str("session id", userSession.Id).Msg("user added to session. waiting for game start")
 
 	playerId := s.nextPlayerId()
 	logPref.Str("player id", playerId).Msg("user assigned an id")
@@ -108,7 +108,7 @@ func (s *Server) handleStartSession(req *mafiapb.Action_StartSession, stream maf
                 ActionResult: &mafiapb.ActionResponse_StartGame_{
                     StartGame: &mafiapb.ActionResponse_StartGame{
                         StartGame: fmt.Sprintf(
-                            "\nGame started, your role is [%s], you are connected to session [%d]\n" +
+                            "\nGame started, your role is [%s], you are connected to session [%s]\n" +
                             "First day is introductory:\n" +
                             "- nobody will be killed\n" +
                             "- your vote won't be counted\n" +
@@ -198,7 +198,13 @@ func (s *Server) handleInterruptGameRequest(p *player) error {
         },
     }
 
-    return s.sendMessageToGameSession(session, gameEndMessage)
+    if err := s.sendMessageToGameSession(session, gameEndMessage); err != nil {
+        return err
+    }
+
+    s.removeGame(session)
+
+    return nil
 }
 
 func (s *Server) handleVoteRequest(p *player, suspectNick string) error {

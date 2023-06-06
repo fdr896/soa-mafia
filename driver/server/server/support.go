@@ -1,6 +1,10 @@
 package server
 
-import "driver/server/game"
+import (
+	"driver/server/game"
+
+	"github.com/beevik/guid"
+)
 
 func (s *Server) findOrCreatedNotStartedSession() *game.GameSession {
 	for session := range s.sessions {
@@ -9,7 +13,7 @@ func (s *Server) findOrCreatedNotStartedSession() *game.GameSession {
 		}
 	}
 
-	session := game.NewGameSession(len(s.sessions), s.gamePlayers)
+	session := game.NewGameSession("sess_" + guid.NewString(), s.gamePlayers)
 	s.sessions[session] = struct{}{}
 
 	return session

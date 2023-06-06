@@ -8,7 +8,6 @@ import (
 )
 
 func automaticActionProducer(c *client) error {
-
     stream := c.stream
 
     // send start session request
@@ -41,6 +40,11 @@ func automaticActionProducer(c *client) error {
                 <-nextActionChan
             }
             firstAction = false
+
+            if c.spirit {
+                zlog.Info().Str("name", c.username).Msg("bot is spirit, wait do nothing")
+                return
+            }
 
             nickname := c.chooseRandomPlayer()
             zlog.Info().Str("nickname", nickname).Str("name", c.username).Msg("bot votes")
