@@ -16,7 +16,8 @@ import (
 )
 
 func main() {
-    rand.Seed(time.Now().Unix())
+    rand.Seed(time.Now().UnixNano())
+
     mode := os.Getenv("CLIENT_MODE")
     if mode != "manual" && mode != "auto" {
         fmt.Println("Wrong mode")

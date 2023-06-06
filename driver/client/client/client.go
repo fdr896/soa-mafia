@@ -14,6 +14,7 @@ type client struct {
     username string
     userId string
     auto bool
+    spirit bool
 
     alivePlayers []string
 
@@ -50,6 +51,7 @@ func NewClient(mode, username string, conn *grpc.ClientConn) (*client, error) {
     return &client{
         username: username,
         auto: mode == "auto",
+        spirit: false,
         alivePlayers: make([]string, 0),
         grpcClient: mafiapb.NewMafiaDriverClient(conn),
         actionProducer: actionProducer,
