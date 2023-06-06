@@ -38,7 +38,7 @@ $ docker compose up bot1 bot2 bot3
 ### Запуск игры без ботов
 Чтобы запустить сервер, необходимо из директории `driver` выполнить
 ```bash
-$ sudo docker compose up
+$ docker compose up server
 ```
 Будет автоматически создан сервер, которые ожидает 4-ёх игроков на одну сессию
 
@@ -47,7 +47,7 @@ $ sudo docker compose up
 #### Запуск игры с произвольным числом игроков
 Чтобы запустить сервер, который ожидает конкретного числа игроков, необходимо выполнить
 ```bash
-$ sudo docker compose run -e SESSION_PLAYERS=7 -p 9000:9000/tcp server
+$ docker compose run -e SESSION_PLAYERS=7 -p 9000:9000/tcp server
 ```
 
 ### Обновление докер образов сервера и клиента
