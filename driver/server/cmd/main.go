@@ -56,7 +56,11 @@ const (
 
 	support.InitServerLogger()
 
-	zlog.Info().Str("port", port).Int("session players", sessionPlayers).Msg("running mafia driver server")
+	zlog.Info().
+	     Str("port", port).
+		 Int("session players", sessionPlayers).
+		 Int("mafias", mafias).
+		 Msg("running mafia driver server")
 	listener, err := net.Listen("tcp", ":" + port)
 	if err != nil {
 		zlog.Fatal().Err(err).Msg("failed to start listening")
