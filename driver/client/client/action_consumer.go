@@ -152,6 +152,8 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse, auto bo
         c.stream.CloseSend()
         if (c.auto) {
             os.Exit(1)
+        } else {
+            os.Exit(0)
         }
     case mafiapb.ActionResponse_DAY_STARTED:
         dayStarted := action.GetDayStarted()
