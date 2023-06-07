@@ -1,10 +1,12 @@
 package client
 
 import (
+	"chat"
 	"context"
 	mafiapb "driver/server/proto"
 	"driver/support"
 	"sync"
+	"time"
 
 	zlog "github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -13,6 +15,7 @@ import (
 type client struct {
     username string
     userId string
+    sessionId string
     auto bool
     spirit bool
 
@@ -22,6 +25,15 @@ type client struct {
     stream mafiapb.MafiaDriver_DoActionClient
 
     actionProducer actionProducerFunctor
+
+    lastSessionTime time.Time
+    rabbitmqConnParams *chat.RabbitmqConnectionParams
+    chat *chat.ChatServer
+
+    curChat string
+    chatsMsgs map[string][]*chat.ChatMessage
+    msgsAccess sync.Mutex
+    newMsgs chan interface{}
 
     waitStartSessionMessage sync.WaitGroup
     waitUserIdAssignment sync.WaitGroup
@@ -33,7 +45,11 @@ type client struct {
 
 type actionProducerFunctor func (*client) error
 
-func NewClient(mode, username string, conn *grpc.ClientConn) (*client, error) {
+func NewClient(
+    mode, username string,
+    conn *grpc.ClientConn,
+    rabbitmqConnParams *chat.RabbitmqConnectionParams) (*client, error) {
+
     if err := support.InitClientLogger(username, mode == "auto");  err != nil {
         return nil, err
     }
@@ -48,6 +64,10 @@ func NewClient(mode, username string, conn *grpc.ClientConn) (*client, error) {
         panic("unknown client type")
     }
 
+    chatsMsgs := make(map[string][]*chat.ChatMessage)
+    chatsMsgs[chat.DAY_CHAT] = make([]*chat.ChatMessage, 0)
+    chatsMsgs[chat.NIGHT_CHAT] = make([]*chat.ChatMessage, 0)
+
     return &client{
         username: username,
         auto: mode == "auto",
@@ -55,6 +75,11 @@ func NewClient(mode, username string, conn *grpc.ClientConn) (*client, error) {
         alivePlayers: make([]string, 0),
         grpcClient: mafiapb.NewMafiaDriverClient(conn),
         actionProducer: actionProducer,
+        lastSessionTime: time.Now(),
+        rabbitmqConnParams: rabbitmqConnParams,
+        curChat: chat.DAY_CHAT,
+        chatsMsgs: chatsMsgs,
+        newMsgs: make(chan interface{}, 1),
         waitActionResponse: make(chan interface{}, 1),
     }, nil
 }
@@ -101,7 +126,47 @@ func (c *client) GetAlivePlayers() *[]string {
     return &c.alivePlayers
 }
 
+func (c *client) GetChat() *chat.ChatServer {
+    return c.chat
+}
+
 func (c *client) SetAlivePlayers(nicknames []string) *client {
     c.alivePlayers = nicknames
     return c
+}
+
+func (c *client) SetSessionId(sessionId string) *client {
+    c.sessionId = sessionId
+    return c
+}
+
+func (c *client) SetCurChat(chat string) *client {
+    c.msgsAccess.Lock()
+    defer c.msgsAccess.Unlock()
+
+    c.curChat = chat
+
+    return c
+}
+
+func (c *client) UpdateLastSessionTime() *client {
+    c.msgsAccess.Lock()
+    defer c.msgsAccess.Unlock()
+
+    c.lastSessionTime = time.Now()
+
+    return c
+}
+
+func (c *client) StartChat() error {
+    chat := chat.NewChatServer(c.username, c.sessionId, c.rabbitmqConnParams)
+
+    if err := chat.StartChat(); err != nil {
+        zlog.Error().Err(err).Str("username", c.username).Msg("failed to start chat")
+        return err
+    }
+    c.chat = chat
+    zlog.Info().Str("username", c.username).Msg("client started chat")
+
+    return nil
 }

@@ -113,6 +113,7 @@ message ActionResponse {
   message StartGame {
     string start_game = 1;
     repeated string nicknames = 2;
+    string session_id = 3;
   }
   message EndGame { string game_result = 1; }
 
@@ -120,6 +121,8 @@ message ActionResponse {
   message DayStarted {
     string user_msg = 1;
     repeated string nicknames = 2;
+    string killed_by_voting = 3;
+    string killed_by_mafia = 4;
   }
   message NightStarted {
     string user_msg = 1;

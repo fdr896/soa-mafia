@@ -1,6 +1,7 @@
 package client
 
 import (
+	"chat"
 	"fmt"
 	"io"
 	"os"
@@ -139,23 +140,41 @@ func handleReceivedActionResp(c *client, action *mafiapb.ActionResponse, auto bo
         startGame := action.GetStartGame()
         fmt.Println(startGame.GetStartGame())
         fmt.Printf("Game players nicknames: %+q\n", startGame.GetNicknames())
-        c.SetAlivePlayers(startGame.GetNicknames())
+        c.SetAlivePlayers(startGame.GetNicknames()).SetSessionId(startGame.GetSessionId())
+        if err := c.StartChat(); err != nil {
+            c.stream.CloseSend()
+            os.Exit(1)
+        }
         c.waitAllUsersConnected.Done()
     case mafiapb.ActionResponse_END_GAME:
         endGame := action.GetEndGame()
         fmt.Println("\nGame finished:", endGame.GetGameResult())
         c.stream.CloseSend()
-        os.Exit(0)
+        if (c.auto) {
+            os.Exit(1)
+        } else {
+            os.Exit(0)
+        }
     case mafiapb.ActionResponse_DAY_STARTED:
         dayStarted := action.GetDayStarted()
         fmt.Printf("Morning started: %s\n", dayStarted.GetUserMsg())
         fmt.Printf("Alive players nicknames: %+q\n", dayStarted.GetNicknames())
-        c.SetAlivePlayers(dayStarted.GetNicknames())
+        c.SetAlivePlayers(dayStarted.GetNicknames()).
+          UpdateLastSessionTime().
+          SetCurChat(chat.DAY_CHAT)
+
+        if c.username == dayStarted.GetKilledByVoting() ||
+           c.username == dayStarted.GetKilledByMafia() {
+            c.spirit = true
+            fmt.Println("You were killed. Your current role is Spirit")
+        }
 
         c.waitActionResponse <- struct{}{}
     case mafiapb.ActionResponse_NIGHT_STARTED:
         nightStarted := action.GetNightStarted()
         fmt.Printf("Night message: %s\n", nightStarted.GetUserMsg())
+
+        c.SetCurChat(chat.NIGHT_CHAT)
 
         switch nightStarted.GetRole() {
         case mafiapb.ActionResponse_MAFIA:
@@ -183,15 +202,12 @@ func (c *client) acceptMafiaKillUsername(auto bool) error {
         nickname = c.chooseRandomPlayer()
         zlog.Info().Str("nickname", nickname).Str("name", c.username).Msg("mafia bot votes")
     } else {
-        for {
-            fmt.Print("Type nickname to kill: ")
-            _, err := fmt.Scanln(&nickname)
-            nickname = strings.TrimSpace(nickname)
-            if err == nil && len(nickname) > 0 {
-                break
-            }
+        readNickname, err := c.StartMafiaChat()
+        if err != nil {
+            zlog.Error().Err(err).Msg("failed when mafia chatting")
+        } else {
+            nickname = readNickname
         }
-        nickname = strings.Split(strings.TrimSpace(nickname), " ")[0]
     }
 
     killPlayer := &mafiapb.Action{

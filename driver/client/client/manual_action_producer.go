@@ -4,6 +4,7 @@ import (
 	"driver/cli"
 	mafiapb "driver/server/proto"
 	"fmt"
+	"strconv"
 
 	zlog "github.com/rs/zerolog/log"
 )
@@ -42,6 +43,9 @@ func manualActionProducer(c *client) error {
     cmdCli.PrintRules()
 
     errChan := make(chan error)
+
+    go c.StartReadingChat(errChan)
+
     go func() {
         for cmd := range cmdCli.Commands() {
             switch cmd.GetType() {
@@ -61,6 +65,10 @@ func manualActionProducer(c *client) error {
                     return
                 }
             case cli.CMD_VOTE:
+                if c.handleSpiritClientActionResult() {
+                    continue
+                }
+
                 if err := c.sendVote(cmd.GetArg(0)); err != nil {
                     errChan <- err
                     return
@@ -73,6 +81,47 @@ func manualActionProducer(c *client) error {
             case cli.CMD_RULES:
                 cmdCli.PrintRules()
                 c.waitActionResponse <- struct{}{}
+            case cli.CMD_READ:
+                if c.handleSpiritClientActionResult() {
+                    continue
+                }
+
+                if err := c.ReadChatSession(); err != nil {
+                    errChan <- err
+                    return
+                }
+                c.waitActionResponse <- struct{}{}
+            case cli.CMD_READ_ALL:
+                if c.handleSpiritClientActionResult() {
+                    continue
+                }
+
+                if err := c.ReadChatAll(); err != nil {
+                    errChan <- err
+                    return
+                }
+                c.waitActionResponse <- struct{}{}
+            case cli.CMD_READ_LAST_N:
+                if c.handleSpiritClientActionResult() {
+                    continue
+                }
+
+                n, _ := strconv.Atoi(cmd.GetArg(0))
+                if err := c.ReadChatLastN(n); err != nil {
+                    errChan <- err
+                    return
+                }
+                c.waitActionResponse <- struct{}{}
+            case cli.CMD_WRITE:
+                if c.handleSpiritClientActionResult() {
+                    continue
+                }
+
+                if err := c.WriteChat(); err != nil {
+                    errChan <- err
+                    return
+                }
+                c.waitActionResponse <- struct{}{}
             }
         }
     }()
@@ -80,4 +129,15 @@ func manualActionProducer(c *client) error {
     cmdCli.StartPlaying(c.waitActionResponse, c.GetAlivePlayers())
 
     return <-errChan
+}
+
+func (c *client) handleSpiritClientActionResult() bool {
+    if c.spirit {
+        fmt.Println("Your are a spirit, chat and voting is unavailable")
+        c.waitActionResponse <- struct{}{}
+
+        return true
+    } else {
+        return false
+    }
 }

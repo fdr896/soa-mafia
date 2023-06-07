@@ -6,6 +6,7 @@ require github.com/rs/zerolog v1.29.1
 
 require (
 	github.com/beevik/guid v1.0.0
+	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect

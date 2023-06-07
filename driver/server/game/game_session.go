@@ -14,10 +14,14 @@ const (
 	NIGHT = 1
 )
 
-func NewGameSession(id string, gamePlayers int) *GameSession {
+func NewGameSession(id string, gamePlayers, mafias int) *GameSession {
 	return &GameSession{
 		Id: id,
         GamePlayers: gamePlayers,
+        Mafias: mafias,
+
+        mafiaNicknames: make([]string, 0),
+
 		players: make(map[string]*player),
 		playerByNickname: make(map[string]*player),
 	}
@@ -26,6 +30,7 @@ func NewGameSession(id string, gamePlayers int) *GameSession {
 type GameSession struct {
 	Id string
     GamePlayers int
+    Mafias int
 
 	currentDay int
 	timeOfDay int // [DAY|NIGHT]
@@ -33,16 +38,19 @@ type GameSession struct {
 	alivePlayers int
 	votes int // resets after each day
 	votesAgainstPlayer map[string]int
-    mafiaNickname string
+    mafiaNicknames []string
 
 	players map[string]*player
 	playerByNickname map[string]*player
 
     // night state
     mafiaVote string
+    aliveMafiaVotes int
     commissarVote string
+    mafiaContradicts bool
     isComissarAlive bool
     commisarFoundMafia bool
+    commisarDesideIfPublish bool
 }
 
 // Needs to find a not started game session
@@ -129,8 +137,8 @@ func (gs *GameSession) GetAllPlayerNicknames() []string {
 	return nicknames
 }
 
-func (gs *GameSession) GetMafiaNickname() string {
-    return gs.mafiaNickname
+func (gs *GameSession) GetMafiaNicknames() []string {
+    return gs.mafiaNicknames
 }
 
 func (gs *GameSession) GetPlayerIdByNickname(nickname string) string {
@@ -143,8 +151,13 @@ func (gs *GameSession) StartGame() {
 	gs.timeOfDay = DAY
 	gs.votes = 0
 	gs.votesAgainstPlayer = make(map[string]int)
+    gs.mafiaVote = ""
+    gs.commissarVote = ""
+    gs.aliveMafiaVotes = 0
+    gs.mafiaContradicts = false
     gs.isComissarAlive = true
     gs.commisarFoundMafia = false
+    gs.commisarDesideIfPublish = false
 
 	// randomly distribute roles
 	ids := make([]string, 0)
@@ -156,15 +169,18 @@ func (gs *GameSession) StartGame() {
 		ids[i], ids[j] = ids[j], ids[i]
 	})
 
-	// first player is mafia
-	// second is comissar
+    // first player is commissar
+	// gs.mafias players is mafia
 	// rest are civilians
-	gs.players[ids[0]].role = MAFIA
-	gs.players[ids[1]].role = COMISSAR
-	for id, player := range gs.players {
-		if id != ids[0] && id != ids[1] {
+    gs.players[ids[0]].role = COMISSAR
+    for _, playerId := range ids[1:gs.Mafias + 1]{
+	    gs.players[playerId].role = MAFIA
+    }
+	for _, player := range gs.players {
+        if player.role != MAFIA && player.role != COMISSAR {
 			player.role = CIVILIAN
-		}
+
+        }
 	}
 
     // print roles
@@ -176,7 +192,12 @@ func (gs *GameSession) StartGame() {
         Msg("player")
     }
 
-    gs.mafiaNickname = gs.players[ids[0]].nickname
+    for _, player := range gs.players {
+        if player.role == MAFIA {
+            gs.mafiaNicknames = append(gs.mafiaNicknames, player.nickname)
+        }
+    }
+
 }
 
 // Returns game status
@@ -193,7 +214,10 @@ func (gs *GameSession) StartDay() int {
     gs.votesAgainstPlayer = make(map[string]int)
     gs.mafiaVote = ""
     gs.commissarVote = ""
+    gs.aliveMafiaVotes = 0
+    gs.mafiaContradicts = false
     gs.commisarFoundMafia = false
+    gs.commisarDesideIfPublish = false
 
     return NOT_FINISHED
 }
@@ -209,10 +233,11 @@ const (
 )
 
 func (gs *GameSession) isGameEnded() int {
-    mafia := gs.playerByNickname[gs.GetMafiaNickname()]
-    if !mafia.isAlive() {
+    aliveMafias := gs.getAliveMafias()
+    if aliveMafias == 0 {
         return CIVILIAN_WON
     }
+
     civiliansCnt := 0
     for _, player := range gs.players {
         if player.role == CIVILIAN {
@@ -220,11 +245,22 @@ func (gs *GameSession) isGameEnded() int {
         }
     }
 
-    if civiliansCnt <= 1 {
+    if civiliansCnt <= aliveMafias {
         return MAFIAN_WON
     }
 
     return NOT_FINISHED
+}
+
+func (gs *GameSession) getAliveMafias() int {
+    aliveMafias := 0
+    for _, nickname := range gs.mafiaNicknames {
+        if gs.playerByNickname[nickname].isAlive() {
+            aliveMafias += 1
+        }
+    }
+
+    return aliveMafias
 }
 
 type MorningSummary struct {
@@ -253,11 +289,18 @@ func (gs *GameSession) GetMorningSummary() *MorningSummary {
     } else {
         killedPlayer = killedPlayerId
     }
-    gs.killPlayer(killedPlayerByMafiaId)
+
+    var killedPlayerByMafia string
+    if !gs.mafiaContradicts {
+        gs.killPlayer(killedPlayerByMafiaId)
+        killedPlayerByMafia = gs.GetPlayerNickname(killedPlayerByMafiaId)
+    } else {
+        killedPlayerByMafia = "nobody was killed (mafias did not agreed with each other)"
+    }
 
     return &MorningSummary{
         KilledPlayerNickname: killedPlayer,
-        KilledByMafiaPlayerNickname: gs.GetPlayerNickname(killedPlayerByMafiaId),
+        KilledByMafiaPlayerNickname: killedPlayerByMafia,
         CommissarInvestigationResult: gs.commissarMessage(publishInvestigation),
     }
 }
@@ -298,20 +341,21 @@ func (gs *GameSession) killPlayer(id string) {
 
 func (gs *GameSession) commissarMessage(found bool) string {
     if found {
-        return fmt.Sprintf("mafia was found: %s", gs.GetMafiaNickname())
+        return fmt.Sprintf("mafia was found: %s", gs.GetPlayerNickname(gs.commissarVote))
     } else {
         return "mafia was not found"
     }
 }
 
 type NightInfo struct {
-    MafiaId string
+    MafiaIds []string
     ComissarId string
     CivilianIds []string
 }
 
 func (gs *GameSession) GetNightInfo() *NightInfo {
     nightInfo := NightInfo{
+        MafiaIds: make([]string, 0),
         CivilianIds: make([]string, 0),
     }
 
@@ -322,7 +366,7 @@ func (gs *GameSession) GetNightInfo() *NightInfo {
 
         switch player.role {
         case MAFIA:
-            nightInfo.MafiaId = player.id
+            nightInfo.MafiaIds = append(nightInfo.MafiaIds, player.id)
         case COMISSAR:
             nightInfo.ComissarId = player.id
         case CIVILIAN:
@@ -395,7 +439,19 @@ func (gs *GameSession) AcceptMafiaVote(mafiaId, playerId string) (bool, error) {
         return false, err
     }
 
+    if len(gs.mafiaVote) > 0 && playerId != gs.mafiaVote {
+        gs.mafiaContradicts = true
+    }
     gs.mafiaVote = playerId
+    gs.aliveMafiaVotes += 1
+
+    if gs.aliveMafiaVotes < gs.getAliveMafias() {
+        return false, nil
+    }
+
+    if gs.isComissarAlive && !gs.commisarDesideIfPublish {
+        return false, nil
+    }
 
     if !gs.isComissarAlive || (gs.isComissarAlive && len(gs.commissarVote) > 0) {
         return true, nil
@@ -412,12 +468,15 @@ func (gs *GameSession) AcceptCommissarVote(commissarId, playerId string) error {
     }
 
     if player.isSpirit() {
-		err := errors.Wrap(ErrNotPermitted, "commissa can not investigate spirit")
+		err := errors.Wrap(ErrNotPermitted, "commissar can not investigate spirit")
 		errPref.Err(err).Msg("failed to investigate")
         return err
     }
 
     gs.commissarVote = playerId
+    if player.role != MAFIA {
+        gs.commisarDesideIfPublish = true
+    }
 
     return nil
 }
@@ -426,6 +485,7 @@ func (gs *GameSession) AcceptCommissarVote(commissarId, playerId string) error {
 // Returns true if both commissar and mafia voted
 func (gs *GameSession) CommissarFoundMafia(publisResult bool) bool {
     gs.commisarFoundMafia = publisResult
+    gs.commisarDesideIfPublish = true
 
-    return len(gs.mafiaVote) > 0
+    return gs.aliveMafiaVotes == gs.getAliveMafias()
 }

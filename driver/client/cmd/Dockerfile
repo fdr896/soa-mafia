@@ -2,13 +2,13 @@ FROM golang:1.19
 
 WORKDIR /mafia_driver_client
 
-COPY go.mod go.sum ./
+COPY driver/go.mod driver/go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN cd client/cmd && go install
-RUN go build -o mafia_driver_client client/cmd/main.go
+RUN cd driver/client/cmd && go install
+RUN go build -o mafia_driver_client driver/client/cmd/main.go
 
 ENV CGO_ENABLED=1
 
