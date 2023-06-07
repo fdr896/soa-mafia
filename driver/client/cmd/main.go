@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chat"
 	"context"
 	"driver/client/client"
 	"fmt"
@@ -13,6 +14,13 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+)
+
+const (
+	RABBITMQ_USER_DEFAULT     = "guest"
+	RABBITMQ_PASSWORD_DEFAULT = "guest"
+	RABBITMQ_HOSTNAME_DEFAULT = "localhost"
+	RABBITMQ_PORT_DEFAULT     = "5672"
 )
 
 func main() {
@@ -42,7 +50,14 @@ func main() {
 	defer conn.Close()
     fmt.Printf("connected to grpc server on endpoint [%s]\n", serverEndpoint)
 
-    client, err  := client.NewClient(mode, username, conn)
+	rabbitmqConnParams := chat.NewRabbitmqConnectionParams(
+		getEnvOrDefault("RABBITMQ_USER", RABBITMQ_USER_DEFAULT),
+		getEnvOrDefault("RABBITMQ_PASSWORD", RABBITMQ_PASSWORD_DEFAULT),
+		getEnvOrDefault("RABBITMQ_HOSTNAME", RABBITMQ_HOSTNAME_DEFAULT),
+		getEnvOrDefault("RABBITMQ_PORT", RABBITMQ_PORT_DEFAULT),
+	)
+
+    client, err  := client.NewClient(mode, username, conn, rabbitmqConnParams)
     if err != nil {
         log.Fatalf("failed to create client: %s\n", err.Error())
     }
@@ -54,3 +69,11 @@ func main() {
         log.Fatalf("error occured when playing: %s\n", err.Error())
     }
 }
+
+ func getEnvOrDefault(envName, defaultValue string) string {
+	if envValue, set := os.LookupEnv(envName); set {
+		return envValue
+	} else {
+		return defaultValue
+	}
+ }

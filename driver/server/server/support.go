@@ -13,7 +13,7 @@ func (s *Server) findOrCreatedNotStartedSession() *game.GameSession {
 		}
 	}
 
-	session := game.NewGameSession("sess_" + guid.NewString(), s.gamePlayers)
+	session := game.NewGameSession("sess_" + guid.NewString(), s.gamePlayers, s.mafias)
 	s.sessions[session] = struct{}{}
 
 	return session

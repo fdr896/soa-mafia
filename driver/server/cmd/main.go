@@ -16,7 +16,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-const DEFAULT_SESSION_PLAYERS = 4
+const (
+	SESSION_PLAYERS_DEFAULT   = 4
+	MAFIAS_DEFAULT = 4
+)
 
  func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -34,8 +37,21 @@ const DEFAULT_SESSION_PLAYERS = 4
 		}
 		sessionPlayers = sessionPlayersNum
 	} else {
-		sessionPlayers = DEFAULT_SESSION_PLAYERS
+		sessionPlayers = SESSION_PLAYERS_DEFAULT
+	}
 
+	var mafias int
+	if envMafias, set := os.LookupEnv("MAFIAS"); set {
+		mafiasNum, err := strconv.Atoi(envMafias)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		if mafiasNum >= sessionPlayers - mafiasNum - 1 {
+			log.Fatal("There are should be not more than (#sessionPlayers - #mafias - 1) mafias")
+		}
+		mafias = mafiasNum
+	} else {
+		mafias = MAFIAS_DEFAULT
 	}
 
 	support.InitServerLogger()
@@ -46,11 +62,13 @@ const DEFAULT_SESSION_PLAYERS = 4
 		zlog.Fatal().Err(err).Msg("failed to start listening")
 	}
 
+
 	grpcServer := grpc.NewServer()
-	mafiapb.RegisterMafiaDriverServer(grpcServer, server.NewServer(sessionPlayers))
+	mafiapb.RegisterMafiaDriverServer(grpcServer, server.NewServer(sessionPlayers, mafias))
 
     zlog.Info().Str("port", port).Msg("server listening")
 	if err := grpcServer.Serve(listener); err != nil {
 		zlog.Fatal().Err(err).Msg("failed to start server")
 	}
  }
+

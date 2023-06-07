@@ -55,6 +55,11 @@ func (i *interactor) PrintRules() {
 [[Commands]]:
 Voting:
     - 'vote' (enter voting mode to vote for mafia)
+Chat:
+    - 'read' (start reading current day chat)
+    - 'read_all' (read all chat history)
+    - 'read_last_n' (read last 'n' messages)
+    - 'write' (write to game session chat)
 Game Information:
     - 'role' (your role)
     - 'state' (game state)

@@ -115,6 +115,7 @@ func (s *Server) handleStartSession(req *mafiapb.Action_StartSession, stream maf
                             "You can familiarize yourself with the interface",
                             playerRole, userSession.Id),
                         Nicknames: userSession.GetPlayerNicknames(),
+                        SessionId: userSession.Id,
                     },
                 },
 		    }
@@ -261,19 +262,22 @@ func (s *Server) handleStartNightEvent(session *game.GameSession) error {
     nightInfo := session.GetNightInfo()
     zlog.Info().Interface("game state", nightInfo).Msg("Night started")
 
-    mafia := s.playerById[nightInfo.MafiaId]
-    mafiaNightMessage := &mafiapb.ActionResponse{
-        Type: mafiapb.ActionResponse_NIGHT_STARTED,
-        ActionResult: &mafiapb.ActionResponse_NightStarted_{
-            NightStarted: &mafiapb.ActionResponse_NightStarted{
-                UserMsg: "night started, your are mafia. Choose a player to kill",
-                Role: mafiapb.ActionResponse_MAFIA,
+    for _, mafiaId := range nightInfo.MafiaIds {
+        mafia := s.playerById[mafiaId]
+        mafiaNightMessage := &mafiapb.ActionResponse{
+            Type: mafiapb.ActionResponse_NIGHT_STARTED,
+            ActionResult: &mafiapb.ActionResponse_NightStarted_{
+                NightStarted: &mafiapb.ActionResponse_NightStarted{
+                    UserMsg: "night started, your are mafia. Choose a player to kill",
+                    Role: mafiapb.ActionResponse_MAFIA,
+                },
             },
-        },
-    }
-    zlog.Info().Str("msg", mafiaNightMessage.String()).Msg("sending message to mafia")
-    if err := s.sendMessageToPlayer(mafia, mafiaNightMessage); err != nil {
-        return err
+        }
+        zlog.Info().Str("msg", mafiaNightMessage.String()).Msg("sending message to mafia")
+        if err := s.sendMessageToPlayer(mafia, mafiaNightMessage); err != nil {
+            return err
+        }
+
     }
 
     if comissarId := nightInfo.ComissarId; len(comissarId) > 0 {
@@ -518,6 +522,8 @@ func (s *Server) handleStartDayEvent(session *game.GameSession) error {
                             "Procceed to vote to find the mafia!",
                         session.GetDay() - 1),
                     Nicknames: session.GetPlayerNicknames(),
+                    KilledByVoting: morningSummary.KilledPlayerNickname,
+                    KilledByMafia: morningSummary.KilledByMafiaPlayerNickname,
                 },
             },
         }

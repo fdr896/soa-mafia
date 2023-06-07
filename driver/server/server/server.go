@@ -13,6 +13,7 @@ type Server struct {
 	mafiapb.UnimplementedMafiaDriverServer
 
     gamePlayers int
+    mafias int
 
 	playerById map[string]*player
     nicknames map[string]interface{}
@@ -24,17 +25,15 @@ type Server struct {
 	mutex sync.Mutex
 }
 
-type player struct {
-	id string
-	stream mafiapb.MafiaDriver_DoActionServer
-}
-
-func NewServer(gamePlayers int) *Server {
+func NewServer(gamePlayers, mafias int) *Server {
 	return &Server{
         gamePlayers: gamePlayers,
+        mafias: mafias,
+
 		playerById: make(map[string]*player),
         nicknames: make(map[string]interface{}),
         idByNickname: make(map[string]string),
+
 		sessions: make(map[*game.GameSession]interface{}),
 		sessionByUserId: make(map[string]*game.GameSession),
 		sessionPlayers: make(map[*game.GameSession][]*player),
@@ -46,10 +45,18 @@ func (s *Server) DoAction(stream mafiapb.MafiaDriver_DoActionServer) error {
 
 	go s.listenFromPlayerStream(stream, errorChan)
 
-	return <-errorChan
+    err := <-errorChan
+    zlog.Error().Err(err).Msg("failed when listening")
+
+    return err
 }
 
-func (s *Server) listenFromPlayerStream(stream mafiapb.MafiaDriver_DoActionServer, errorChan chan error) {
+type player struct {
+	id string
+	stream mafiapb.MafiaDriver_DoActionServer
+}
+
+func (s *Server) listenFromPlayerStream(stream mafiapb.MafiaDriver_DoActionServer, errorChan chan<- error) {
 	ctx := stream.Context()
 	for {
 		select {
