@@ -11,7 +11,7 @@ x-client-env: &client-env
 
 services:
   server:
-    image: fdr400/soa_mafia_driver_server:testing
+    image: fdr400/soa_mafia_driver_server
     hostname: "mafia_server"
     ports:
       - 9000:9000/tcp
@@ -24,7 +24,7 @@ services:
     restart: on-failure
 
   bot1:
-    image: fdr400/soa_mafia_driver_client:testing
+    image: fdr400/soa_mafia_driver_client
     environment:
       USERNAME: bot1
       <<: *client-env
@@ -33,7 +33,7 @@ services:
     restart: always
 
   bot2:
-    image: fdr400/soa_mafia_driver_client:testing
+    image: fdr400/soa_mafia_driver_client
     environment:
       USERNAME: bot2
       <<: *client-env
@@ -42,7 +42,7 @@ services:
     restart: always
 
   bot3:
-    image: fdr400/soa_mafia_driver_client:testing
+    image: fdr400/soa_mafia_driver_client
     environment:
       USERNAME: bot3
       <<: *client-env
