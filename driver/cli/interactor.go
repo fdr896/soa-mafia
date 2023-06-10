@@ -20,13 +20,13 @@ func (i *interactor) Commands() <-chan *Command {
     return i.commands
 }
 
-func (i *interactor) Start(username string) {
+func (i *interactor) Start() string {
     fmt.Printf(`
-Hello, %s!
+Hello!
 Your are connected to the grpc-mafia server! Here you can play mafia!!!
 - Type 'start' to connect to random game session
 - Type 'exit' to end the game
-`, username)
+`)
 
     var cmd string
     for {
@@ -37,13 +37,45 @@ Your are connected to the grpc-mafia server! Here you can play mafia!!!
 
         switch cmd {
         case "start":
-            return
+            fmt.Print("Enter username (small latin letters, digits and underscores): ")
+            return i.readUsername()
         case "exit":
             os.Exit(0)
         default:
             fmt.Println("Type 'start' or 'exit" )
         }
     }
+}
+
+func (i *interactor) readUsername() string {
+    var username string
+    for {
+        _, err := fmt.Scan(&username)
+        if err != nil {
+            panic(err)
+        }
+
+        if isGoodUsername(username) {
+            return username
+        }
+        fmt.Print("Invalid username, try again: ")
+    }
+}
+
+func isGoodUsername(username string) bool {
+    if len(username) == 0 {
+        return false
+    }
+
+    for _, r := range username {
+        if !('a' <= r && r <= 'z') &&
+           !('0' <= r && r <= '9') &&
+           !(r == '_') {
+            return false
+        }
+    }
+
+    return true
 }
 
 func (i *interactor) Print(msg string) {

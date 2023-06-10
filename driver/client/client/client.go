@@ -12,6 +12,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+type IClient interface {
+    OpenStream(ctx context.Context) error
+    StartPlaying() error
+}
+
 type client struct {
     username string
     userId string
@@ -45,7 +50,21 @@ type client struct {
 
 type actionProducerFunctor func (*client) error
 
-func NewClient(
+func NewManualClient(
+    mode string,
+    conn *grpc.ClientConn,
+    rabbitmqConnParams *chat.RabbitmqConnectionParams) (IClient, error) {
+    return newClient(mode, "", conn, rabbitmqConnParams)
+}
+
+func NewAutoClient(
+    mode, username string,
+    conn *grpc.ClientConn,
+    rabbitmqConnParams *chat.RabbitmqConnectionParams) (IClient, error) {
+    return newClient(mode, username, conn, rabbitmqConnParams)
+}
+
+func newClient(
     mode, username string,
     conn *grpc.ClientConn,
     rabbitmqConnParams *chat.RabbitmqConnectionParams) (*client, error) {
@@ -159,6 +178,10 @@ func (c *client) UpdateLastSessionTime() *client {
 }
 
 func (c *client) StartChat() error {
+    if c.auto {
+        return nil
+    }
+
     chat := chat.NewChatServer(c.username, c.sessionId, c.rabbitmqConnParams)
 
     if err := chat.StartChat(); err != nil {

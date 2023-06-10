@@ -11,7 +11,7 @@ x-client-env: &client-env
 
 services:
   server:
-    image: fdr400/soa_mafia_driver_server
+    image: fdr400/soa_mafia_driver_server:testing
     hostname: "mafia_server"
     ports:
       - 9000:9000/tcp
@@ -24,31 +24,31 @@ services:
     restart: on-failure
 
   bot1:
-    image: fdr400/soa_mafia_driver_client:latest
+    image: fdr400/soa_mafia_driver_client:testing
     environment:
       USERNAME: bot1
       <<: *client-env
     depends_on:
       - server
-    restart: on-failure
+    restart: always
 
   bot2:
-    image: fdr400/soa_mafia_driver_client:latest
+    image: fdr400/soa_mafia_driver_client:testing
     environment:
       USERNAME: bot2
       <<: *client-env
     depends_on:
       - server
-    restart: on-failure
+    restart: always
 
   bot3:
-    image: fdr400/soa_mafia_driver_client:latest
+    image: fdr400/soa_mafia_driver_client:testing
     environment:
       USERNAME: bot3
       <<: *client-env
     depends_on:
       - server
-    restart: on-failure
+    restart: always
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
