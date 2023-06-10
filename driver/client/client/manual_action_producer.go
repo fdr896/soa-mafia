@@ -12,7 +12,7 @@ import (
 func manualActionProducer(c *client) error {
     cmdCli := cli.NewCliInteractor()
 
-    cmdCli.Start(c.username)
+    c.username = cmdCli.Start()
 
     stream := c.stream
 
