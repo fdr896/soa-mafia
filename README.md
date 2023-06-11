@@ -141,6 +141,8 @@ Chat:
 
 Сервис представляет из HTTP REST API сервер, который может работать как отдельно от остальных компонент, так и вместе сними, собирая статистику о игроках.
 
+**Важно:** чтобы статистика по игроку собиралась, нужно сначала создать его в этом сервисе с таким же именем (для незарегистрированных игроков статистика не собирается)
+
 ### Запуск
 Для запуска только данного сервиса, можно выполнить
 ```bash
@@ -159,7 +161,9 @@ GET    /ping
 GET    /player/:username
 GET    /player
 GET    /player/:username/avatar
+GET    /player/:username/pdf
 POST   /player
+POST   /player/:username/pdf
 PUT    /player/:username
 DELETE /player/:username
 ```
@@ -195,6 +199,14 @@ $ curl http://localhost:9077/player/user/avatar
 Пример ответа:
 ![](images/example7.png)
 
+- `GET /player/:username/pdf` (возвращает сгенерированный pdf-файл со статистикой игрока)
+Пример запроса:
+```bash
+$ curl http://localhost:9077/player/user/pdf
+```
+Пример ответа:
+![](images/example8.png)
+
 - `POST /player` (создаёт пользователя)
 Пример запроса без задания аватара (в данном случае, аватар назначится дефолтным ([default_avatar.png](https://github.com/fdr896/soa-mafia/tree/main/stat_manager/storage/filesystem/data/default_avatar.png))):
 ```bash
@@ -212,6 +224,16 @@ $ curl -X POST http://localhost:9077/player \
   -F "gender=male" \
   -F "avatar=@avatar.jpeg" \
   -H "Content-Type: multipart/form-data"
+```
+
+- `POST /player/:username/pdf` (посылает задачу генерации pdf-файла со статистикой в менеджер задач и моментально возвращет URL, по которому будет доступен сгенерированный файл)
+Пример запроса:
+```bash
+$ curl -X POST http://localhost:9077/player/user/pdf
+```
+Пример ответа:
+```
+http://localhost:9077/player/user/pdf
 ```
 
 - `PUT /player/:username` (обновляет преданную информацию о пользователе; можно задавать не все поля):
