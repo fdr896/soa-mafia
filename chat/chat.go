@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"common"
 	"fmt"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -15,34 +16,18 @@ const (
 type ChatServer struct {
 	username string
 	sessionId string
-	connParams *RabbitmqConnectionParams
+	connParams *common.RabbitmqConnectionParams
 
 	conn *amqp.Connection
 	ch *amqp.Channel
 	queue amqp.Queue
 }
 
-type RabbitmqConnectionParams struct {
-	user string
-	password string
-	hostname string
-	port string
-}
-
-func NewChatServer(username, sessionId string, connParams *RabbitmqConnectionParams) *ChatServer {
+func NewChatServer(username, sessionId string, connParams *common.RabbitmqConnectionParams) *ChatServer {
 	return &ChatServer{
 		username: username,
 		sessionId: sessionId,
 		connParams: connParams,
-	}
-}
-
-func NewRabbitmqConnectionParams(user, password, hostname, port string) *RabbitmqConnectionParams {
-	return &RabbitmqConnectionParams{
-		user: user,
-		password: password,
-		hostname: hostname,
-		port: port,
 	}
 }
 
@@ -54,9 +39,8 @@ func (cs *ChatServer) GetChatQueueName() string {
 	return fmt.Sprintf("%s_%s", cs.sessionId, cs.username)
 }
 
-
 func (cs *ChatServer) StartChat() error {
-	connUrl := getRabbitmqConnectionUrl(cs.connParams)
+	connUrl := common.GetRabbitmqConnectionUrl(cs.connParams)
 	zlog.Info().Str("url", connUrl).Msg("connecting to rabbitmq")
 
 	conn, err := amqp.Dial(connUrl)

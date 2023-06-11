@@ -69,3 +69,15 @@ func toDbPlayerForUpdateWithAvatar(username string, p *PlayerForUpdate, avatarFi
 	return dp
 }
 
+func toDbPlayerStat(p *PlayerStat) *database.Player {
+	return &database.Player{
+		Username: p.Username,
+		Email: "",
+		Gender: database.UNDEFINED,
+		SessionPlayed: p.SessionPlayed,
+		GameWins: p.GameWins,
+		GameLosts: p.GameLosts,
+		TimePlayedMs: p.TimePlayedMs,
+	}
+}
+

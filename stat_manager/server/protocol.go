@@ -23,6 +23,15 @@ type PlayerForUpdate struct {
 	Avatar *multipart.FileHeader `form:"avatar"`
 }
 
+type PlayerStat struct {
+	Username string `json:"username"`
+
+	SessionPlayed int `json:"session_played"`
+	GameWins      int `json:"game_wins"`
+	GameLosts     int `json:"game_losts"`
+	TimePlayedMs  int `json:"time_played_ms"`
+}
+
 /////////// Response /////////// 
 
 type PlayerInfo struct {

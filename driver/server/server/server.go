@@ -4,6 +4,7 @@ import (
 	"driver/server/game"
 	mafiapb "driver/server/proto"
 	"io"
+	stat_manager "stat_manager/client"
 	"sync"
 
 	zlog "github.com/rs/zerolog/log"
@@ -22,11 +23,15 @@ type Server struct {
 	sessionByUserId map[string]*game.GameSession
 	sessionPlayers map[*game.GameSession][]*player
 
+    smc *stat_manager.StatClient
+
 	mutex sync.Mutex
 }
 
-func NewServer(gamePlayers, mafias int) *Server {
+func NewServer(gamePlayers, mafias int, smc *stat_manager.StatClient) *Server {
 	return &Server{
+        smc: smc,
+
         gamePlayers: gamePlayers,
         mafias: mafias,
 

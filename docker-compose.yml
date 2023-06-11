@@ -1,13 +1,15 @@
-version: '3.8'
+version: '3.9'
+
+x-rabbimq-env: &rabbitmq-env
+  RABBITMQ_USER: guest
+  RABBITMQ_PASSWORD: guest
+  RABBITMQ_HOSTNAME: rabbitmq
+  RABBITMQ_PORT: 5672
 
 x-client-env: &client-env
   CLIENT_MODE: auto
   SERVER_HOST: mafia_server
   SERVER_PORT: 9000
-  RABBITMQ_USER: guest
-  RABBITMQ_PASSWORD: guest
-  RABBITMQ_HOSTNAME: rabbitmq
-  RABBITMQ_PORT: 5672
 
 services:
   server:
@@ -19,8 +21,11 @@ services:
       - PORT=9000
       - SESSION_PLAYERS=4
       - MAFIAS=1
+      - STAT_MANAGER_HOST=mafia_stat_manager
+      - STAT_MANAGER_PORT=9077
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     restart: on-failure
 
   bot1:
@@ -28,6 +33,7 @@ services:
     environment:
       USERNAME: bot1
       <<: *client-env
+      <<: *rabbitmq-env
     depends_on:
       - server
     restart: always
@@ -37,6 +43,7 @@ services:
     environment:
       USERNAME: bot2
       <<: *client-env
+      <<: *rabbitmq-env
     depends_on:
       - server
     restart: always
@@ -46,6 +53,7 @@ services:
     environment:
       USERNAME: bot3
       <<: *client-env
+      <<: *rabbitmq-env
     depends_on:
       - server
     restart: always
@@ -56,11 +64,15 @@ services:
     ports:
       - 9077:9077/tcp
     environment:
-      - STAT_MANAGER_PORT=9077
-      - STAT_MANAGER_READ_TIMEOUT_MS=5000
-      - STAT_MANAGER_WRITE_TIMEOUT_MS=5000
-      - STAT_MANAGER_DATABASE_FILE=players_storage.db
+      STAT_MANAGER_PORT: 9077
+      STAT_MANAGER_READ_TIMEOUT_MS: 5000
+      STAT_MANAGER_WRITE_TIMEOUT_MS: 5000
+      STAT_MANAGER_DATABASE_FILE: players_storage.db
+      <<: *rabbitmq-env
     restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -70,8 +82,8 @@ services:
         - 5672:5672
         - 15672:15672
     healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:15672"]
-        interval: 30s
-        timeout: 10s
+        test: ["CMD", "nc", "-z", "localhost", "5672"]
+        interval: 5s
+        timeout: 5s
         retries: 5
 

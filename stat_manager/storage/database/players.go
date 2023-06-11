@@ -62,7 +62,7 @@ func (ps *Players) GetPlayerByUsername(ctx context.Context, username string) (*P
 	row := ps.db.QueryRowContext(ctx, selectPlayerByUsernameQuery, username)
 
 	var p Player
-	err := row.Scan(&p.dbId,
+	err := row.Scan(&p.DbId,
 		&p.Username, &p.Email, &p.Gender, &p.AvatarFilename,
 		&p.SessionPlayed, &p.GameWins, &p.GameLosts, &p.TimePlayedMs)
 	switch err {
@@ -90,7 +90,7 @@ func (ps *Players) GetPlayersByUsernames(ctx context.Context, usernames []string
 	players := make([]*Player, 0)
 	for rows.Next() {
 		var p Player
-		err := rows.Scan(&p.dbId,
+		err := rows.Scan(&p.DbId,
 			&p.Username, &p.Email, &p.Gender, &p.AvatarFilename,
 			&p.SessionPlayed, &p.GameWins, &p.GameLosts, &p.TimePlayedMs)
 

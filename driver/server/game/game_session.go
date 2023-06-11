@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/pkg/errors"
 	zlog "github.com/rs/zerolog/log"
@@ -34,6 +35,7 @@ type GameSession struct {
 
 	currentDay int
 	timeOfDay int // [DAY|NIGHT]
+    gameTime time.Time
 
 	alivePlayers int
 	votes int // resets after each day
@@ -89,6 +91,10 @@ func (gs *GameSession) GetDay() int {
     return gs.currentDay
 }
 
+func (gs *GameSession) GetGameDuration() int {
+    return int(time.Since(gs.gameTime).Milliseconds())
+}
+
 func (gs *GameSession) GetPlayerRole(id string) int {
 	return gs.players[id].role
 }
@@ -141,6 +147,27 @@ func (gs *GameSession) GetMafiaNicknames() []string {
     return gs.mafiaNicknames
 }
 
+func (gs *GameSession) GetNotMafiaNicknames() []string {
+    nicknames := make([]string, 0)
+    mafias := gs.GetMafiaNicknames()
+
+    for _, player := range gs.players {
+        isMafia := false
+        for _, nickname := range mafias {
+            if player.nickname == nickname {
+                isMafia = true
+                break
+            }
+        }
+
+        if !isMafia {
+            nicknames = append(nicknames, player.nickname)
+        }
+    }
+
+    return nicknames
+}
+
 func (gs *GameSession) GetPlayerIdByNickname(nickname string) string {
     return gs.playerByNickname[nickname].id
 }
@@ -149,6 +176,7 @@ func (gs *GameSession) StartGame() {
 	// initialize fields
 	gs.currentDay = 1
 	gs.timeOfDay = DAY
+    gs.gameTime = time.Now()
 	gs.votes = 0
 	gs.votesAgainstPlayer = make(map[string]int)
     gs.mafiaVote = ""

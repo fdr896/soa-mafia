@@ -11,6 +11,7 @@ import (
 
 	mafiapb "driver/server/proto"
 	"driver/server/server"
+	stat_manager "stat_manager/client"
 
 	zlog "github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -19,6 +20,9 @@ import (
 const (
 	SESSION_PLAYERS_DEFAULT   = 4
 	MAFIAS_DEFAULT = 4
+
+	STAT_MANAGER_HOST_DEFAULT = "localhost"
+	STAT_MANAGER_PORT_DEFAULT = "9077"
 )
 
  func main() {
@@ -56,6 +60,11 @@ const (
 
 	common.InitServerLogger()
 
+	statManagerClient := stat_manager.NewStatClient(
+		common.GetEnvOrDefault("STAT_MANAGER_HOST", STAT_MANAGER_HOST_DEFAULT),
+		common.GetEnvOrDefault("STAT_MANAGER_PORT", STAT_MANAGER_PORT_DEFAULT),
+	)
+
 	zlog.Info().
 	     Str("port", port).
 		 Int("session players", sessionPlayers).
@@ -68,7 +77,8 @@ const (
 
 
 	grpcServer := grpc.NewServer()
-	mafiapb.RegisterMafiaDriverServer(grpcServer, server.NewServer(sessionPlayers, mafias))
+	mafiapb.RegisterMafiaDriverServer(
+		grpcServer, server.NewServer(sessionPlayers, mafias, statManagerClient))
 
     zlog.Info().Str("port", port).Msg("server listening")
 	if err := grpcServer.Serve(listener); err != nil {

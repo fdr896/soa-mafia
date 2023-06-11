@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"stat_manager/pdf"
 	"stat_manager/storage/database"
 	"stat_manager/storage/filesystem"
 	"syscall"
@@ -17,6 +18,9 @@ import (
 )
 
 type statManager struct {
+	// config
+	config *ServerConfig
+
 	// server
 	instance *http.Server
 	router   *gin.Engine
@@ -24,10 +28,18 @@ type statManager struct {
 	// storage
 	db       *database.Players
 	as       *filesystem.AvatarsStorage
+	ps       *filesystem.PdfStorage
+
+	// pdf gen
+	tm       *pdf.TaskManager
+	pr       *pdf.PdfRender
 }
 
-func NewStatManager(config *ServerConfig) (*statManager, error) {
+func NewStatManager(config *ServerConfig, connParams *common.RabbitmqConnectionParams) (*statManager, error) {
+	common.InitServerLogger()
+
 	var sm statManager
+	sm.config = config
 
 	// Gin router
 	sm.router = gin.New()
@@ -37,6 +49,7 @@ func NewStatManager(config *ServerConfig) (*statManager, error) {
 
 	sm.registerPingRoute()
 	sm.registerPlayersRoutes()
+	sm.registerInternalRoutes()
 
 	// HTTP server
 	sm.instance = &http.Server{
@@ -54,6 +67,7 @@ func NewStatManager(config *ServerConfig) (*statManager, error) {
 	}
 	sm.db = db
 
+	// file storages
 	as, err := filesystem.CreateAvatarsStorage()
 	if err != nil {
 		zlog.Error().Err(err).Msg("failed to create avatars storage")
@@ -61,12 +75,29 @@ func NewStatManager(config *ServerConfig) (*statManager, error) {
 	}
 	sm.as = as
 
+	ps, err := filesystem.CreatePdfStorage()
+	if err != nil {
+		zlog.Error().Err(err).Msg("failed to create pdf storage")
+		return nil, err
+	}
+	sm.ps = ps
+
+	// tasks manager
+	tm := pdf.NewTaskManager(connParams)
+	if err := tm.Start(); err != nil {
+		zlog.Error().Err(err).Msg("failed to start tasks manager")
+		panic(err)
+	}
+	sm.tm = tm
+
+	// rendering
+	sm.pr = pdf.NewRender(sm.tm, sm.ps, sm.as)
+	go sm.pr.StartRendering()
+
 	return &sm, nil
 }
 
 func (sm *statManager) Start() {
-	common.InitServerLogger()
-
 	go func() {
 		fmt.Printf("StatManager started listening on %s.\nPress Ctrl+C to shutdown...\n", sm.instance.Addr)
 
@@ -91,4 +122,8 @@ func (sm *statManager) Start() {
 		fmt.Println("Timeout ended! Force shuting down")
 	default:
 	}
+}
+
+func (sm *statManager) getEndpoint() string {
+	return fmt.Sprintf("http://localhost:%s", sm.config.Port)
 }

@@ -7,19 +7,19 @@ const (
 )
 
 type Player struct {
-	dbId int
+	DbId int `json:"db_id"`
 
 	// personal data
-	Username string
-	Email string
-	Gender int // [MALE|FEMALE]
-	AvatarFilename string
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	Gender         int    `json:"gender"` // [MALE|FEMALE]
+	AvatarFilename string `json:"avatar_filename"`
 
 	// statistics
-	SessionPlayed int
-	GameWins int
-	GameLosts int
-	TimePlayedMs int
+	SessionPlayed int `json:"session_played"`
+	GameWins      int `json:"game_wins"`
+	GameLosts     int `json:"game_losts"`
+	TimePlayedMs  int `json:"time_played_ms"`
 }
 
 func GenderToString(gender int) string {
