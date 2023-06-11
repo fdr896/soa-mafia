@@ -22,3 +22,9 @@
 
 # Log files
 .logs
+
+# Storage files
+.storage
+
+# Database
+players.db
