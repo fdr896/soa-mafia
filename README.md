@@ -146,7 +146,7 @@ Chat:
 ### Запуск
 Для запуска только данного сервиса, можно выполнить
 ```bash
-$ docker compose up stat_manager
+$ docker compose up rabbitmq stat_manager
 ```
 Для запуска всего сервиса, необходимо выполнить
 ```bash
