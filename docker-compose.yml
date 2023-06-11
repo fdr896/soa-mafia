@@ -1,17 +1,19 @@
 version: '3.8'
 
-x-client-env: &client-env
-  CLIENT_MODE: auto
-  SERVER_HOST: mafia_server
-  SERVER_PORT: 9000
+x-rabbimq-env: &rabbitmq-env
   RABBITMQ_USER: guest
   RABBITMQ_PASSWORD: guest
   RABBITMQ_HOSTNAME: rabbitmq
   RABBITMQ_PORT: 5672
 
+x-client-env: &client-env
+  CLIENT_MODE: auto
+  SERVER_HOST: mafia_server
+  SERVER_PORT: 9000
+
 services:
   server:
-    image: fdr400/soa_mafia_driver_server
+    image: fdr400/soa_mafia_driver_server:testing
     hostname: "mafia_server"
     ports:
       - 9000:9000/tcp
@@ -19,48 +21,56 @@ services:
       - PORT=9000
       - SESSION_PLAYERS=4
       - MAFIAS=1
+      - STAT_MANAGER_HOST=mafia_stat_manager
+      - STAT_MANAGER_PORT=9077
     depends_on:
-      - rabbitmq
+      - stat_manager
     restart: on-failure
 
   bot1:
-    image: fdr400/soa_mafia_driver_client
+    image: fdr400/soa_mafia_driver_client:testing
     environment:
       USERNAME: bot1
       <<: *client-env
+      <<: *rabbitmq-env
     depends_on:
       - server
     restart: always
 
   bot2:
-    image: fdr400/soa_mafia_driver_client
+    image: fdr400/soa_mafia_driver_client:testing
     environment:
       USERNAME: bot2
       <<: *client-env
+      <<: *rabbitmq-env
     depends_on:
       - server
     restart: always
 
   bot3:
-    image: fdr400/soa_mafia_driver_client
+    image: fdr400/soa_mafia_driver_client:testing
     environment:
       USERNAME: bot3
       <<: *client-env
+      <<: *rabbitmq-env
     depends_on:
       - server
     restart: always
 
   stat_manager:
-    image: fdr400/soa_mafia_stat_manager
+    image: fdr400/soa_mafia_stat_manager:testing
     hostname: "mafia_stat_manager"
     ports:
       - 9077:9077/tcp
     environment:
-      - STAT_MANAGER_PORT=9077
-      - STAT_MANAGER_READ_TIMEOUT_MS=5000
-      - STAT_MANAGER_WRITE_TIMEOUT_MS=5000
-      - STAT_MANAGER_DATABASE_FILE=players_storage.db
+      STAT_MANAGER_PORT: 9077
+      STAT_MANAGER_READ_TIMEOUT_MS: 5000
+      STAT_MANAGER_WRITE_TIMEOUT_MS: 5000
+      STAT_MANAGER_DATABASE_FILE: players_storage.db
+      <<: *rabbitmq-env
     restart: on-failure
+    depends_on:
+      - rabbitmq
 
   rabbitmq:
     image: rabbitmq:3-management-alpine

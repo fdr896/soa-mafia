@@ -1,7 +1,6 @@
 package main
 
 import (
-	"chat"
 	"common"
 	"context"
 	"driver/client/client"
@@ -59,7 +58,7 @@ func main() {
 	defer conn.Close()
     fmt.Printf("connected to grpc server on endpoint [%s]\n", serverEndpoint)
 
-	rabbitmqConnParams := chat.NewRabbitmqConnectionParams(
+	rabbitmqConnParams := common.NewRabbitmqConnectionParams(
 		common.GetEnvOrDefault("RABBITMQ_USER", RABBITMQ_USER_DEFAULT),
 		common.GetEnvOrDefault("RABBITMQ_PASSWORD", RABBITMQ_PASSWORD_DEFAULT),
 		common.GetEnvOrDefault("RABBITMQ_HOSTNAME", RABBITMQ_HOSTNAME_DEFAULT),

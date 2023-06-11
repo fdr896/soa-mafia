@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/mail"
 	"stat_manager/storage/database"
@@ -22,9 +23,11 @@ func (sm *statManager) registerPlayersRoutes() {
 	router.GET(playerRoute+"/:username", sm.handleGetOnePlayerInfoRequest)
 	router.GET(playerRoute, sm.handleGetManyPlayersInfoRequest)
 	router.GET(playerRoute+"/:username/avatar", sm.handleGetAvatarRequest)
+	router.GET(playerRoute+"/:username/pdf", sm.handleGetPlayerPdfRequest)
 
 	//////////// POST ////////////
 	router.POST(playerRoute, sm.handleCreatePlayerRequest)
+	router.POST(playerRoute+"/:username/pdf", sm.handleSubmitGenPdfRequest)
 
 	//////////// PUT ////////////
 	router.PUT(playerRoute+"/:username", sm.handleUpdatePlayerRequest)
@@ -284,4 +287,72 @@ func (sm *statManager) handleDeletePlayerRequest(c *gin.Context) {
 		zlog.Error().Err(err).Msg("failed to query player")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
+}
+
+func (sm *statManager) handleGetPlayerPdfRequest(c *gin.Context) {
+	var username PlayerUsername
+	if err := c.BindUri(&username); err != nil {
+		zlog.Error().Err(err).Msg("failed to bind username")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err := sm.db.GetPlayerByUsername(c, username.Username)
+	switch err {
+	case nil:
+		zlog.Info().Msg("pdf will be checked")
+	case database.ErrNotFound:
+		zlog.Error().Str("username", username.Username).Msg("no such player")
+		c.JSON(http.StatusNotFound, gin.H{"error": "player with given username does not exists"})
+		return
+	default:
+		zlog.Error().Err(err).Msg("failed to query player")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	zlog.Info().Str("username", username.Username).Msg("get pdf request")
+
+	if sm.ps.Exists(username.Username) {
+		c.File(sm.ps.UserPdfPath(username.Username))
+	} else {
+		c.JSON(http.StatusNotFound, gin.H{"error": "pdf is not generated yet"})
+	}
+}
+
+func (sm *statManager) handleSubmitGenPdfRequest(c *gin.Context) {
+	var username PlayerUsername
+	if err := c.BindUri(&username); err != nil {
+		zlog.Error().Err(err).Msg("failed to bind username")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	zlog.Info().Str("username", username.Username).Msg("get pdf gen request")
+
+	p, err := sm.db.GetPlayerByUsername(c, username.Username)
+	switch err {
+	case nil:
+		zlog.Info().Msg("task will be submited")
+	case database.ErrNotFound:
+		zlog.Error().Str("username", username.Username).Msg("no such player")
+		c.JSON(http.StatusNotFound, gin.H{"error": "player with given username does not exists"})
+		return
+	default:
+		zlog.Error().Err(err).Msg("failed to query player")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := sm.tm.SubmitPdfGenTask(p); err != nil {
+		zlog.Error().Err(err).Msg("failed to submit gen pdf task")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.String(http.StatusOK, sm.genPdfEndpoint(p.Username))
+}
+
+func (sm *statManager) genPdfEndpoint(username string) string {
+	return fmt.Sprintf("%s/player/%s/pdf\n", sm.getEndpoint(), username)
 }

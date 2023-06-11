@@ -32,7 +32,7 @@ type client struct {
     actionProducer actionProducerFunctor
 
     lastSessionTime time.Time
-    rabbitmqConnParams *chat.RabbitmqConnectionParams
+    rabbitmqConnParams *common.RabbitmqConnectionParams
     chat *chat.ChatServer
 
     curChat string
@@ -53,21 +53,21 @@ type actionProducerFunctor func (*client) error
 func NewManualClient(
     mode string,
     conn *grpc.ClientConn,
-    rabbitmqConnParams *chat.RabbitmqConnectionParams) (IClient, error) {
+    rabbitmqConnParams *common.RabbitmqConnectionParams) (IClient, error) {
     return newClient(mode, "", conn, rabbitmqConnParams)
 }
 
 func NewAutoClient(
     mode, username string,
     conn *grpc.ClientConn,
-    rabbitmqConnParams *chat.RabbitmqConnectionParams) (IClient, error) {
+    rabbitmqConnParams *common.RabbitmqConnectionParams) (IClient, error) {
     return newClient(mode, username, conn, rabbitmqConnParams)
 }
 
 func newClient(
     mode, username string,
     conn *grpc.ClientConn,
-    rabbitmqConnParams *chat.RabbitmqConnectionParams) (*client, error) {
+    rabbitmqConnParams *common.RabbitmqConnectionParams) (*client, error) {
 
     if err := common.InitClientLogger(username, mode == "auto");  err != nil {
         return nil, err

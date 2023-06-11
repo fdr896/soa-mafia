@@ -4,6 +4,7 @@ import (
 	"driver/server/game"
 	mafiapb "driver/server/proto"
 	"fmt"
+	stat_manager "stat_manager/server"
 
 	"github.com/beevik/guid"
 	zlog "github.com/rs/zerolog/log"
@@ -545,8 +546,61 @@ func (s *Server) handleStartDayEvent(session *game.GameSession) error {
             return err
         }
 
+        s.updatePlayersStat(session, gameMorningStatus)
+
         s.removeGame(session)
     }
 
     return nil
+}
+
+func (s *Server) updatePlayersStat(session *game.GameSession, gameMorningStatus int) {
+    mafias := session.GetMafiaNicknames()
+    rest := session.GetNotMafiaNicknames()
+
+    durationMs := session.GetGameDuration()
+
+    infos := make([]*stat_manager.PlayerStat, 0)
+
+    mafiaWin := func() int {
+        if gameMorningStatus == game.MAFIAN_WON {
+            return 1
+        } else {
+            return 0
+        }
+    }()
+    civiliaWin := func() int {
+        if gameMorningStatus == game.CIVILIAN_WON {
+            return 1
+        } else {
+            return 0
+        }
+    }()
+
+    for _, mafia := range mafias {
+        infos = append(infos, &stat_manager.PlayerStat{
+            Username: mafia,
+            SessionPlayed: 1,
+            GameWins: mafiaWin,
+            GameLosts: 1 - mafiaWin,
+            TimePlayedMs: durationMs,
+        })
+    }
+
+    for _, notMafia := range rest {
+        infos = append(infos, &stat_manager.PlayerStat{
+            Username: notMafia,
+            SessionPlayed: 1,
+            GameWins: civiliaWin,
+            GameLosts: 1 - civiliaWin,
+            TimePlayedMs: durationMs,
+        })
+    }
+
+    for _, info := range infos {
+        zlog.Info().Interface("info", *info).Msg("updating player")
+        if err := s.smc.UpdatePlayerStat(info); err != nil {
+            zlog.Error().Err(err).Str("username", info.Username).Msg("failed to update player info")
+        }
+    }
 }
