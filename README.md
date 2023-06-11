@@ -135,3 +135,102 @@ Chat:
 
 ### Запуск
 Запуск полностью аналогичен запуску сервиса в предыдущем домашнем задании
+
+## Домашние задание 4
+Реализация и описание интерфейса располагается в [soa-mafia/stat_manager](https://github.com/fdr896/soa-mafia/tree/main/stat_manager).
+
+Сервис представляет из HTTP REST API сервер, который может работать как отдельно от остальных компонент, так и вместе сними, собирая статистику о игроках.
+
+### Запуск
+Для запуска только данного сервиса, можно выполнить
+```bash
+$ docker compose up stat_manager
+```
+Для запуска всего сервиса, необходимо выполнить
+```bash
+$ docker compose up
+```
+Сервер поднимется на `9077` порту
+
+### Интерфейс
+Сервис предоставляет следующий интерфейс для работы с внешними клиентами:
+```
+GET    /ping
+GET    /player/:username
+GET    /player
+GET    /player/:username/avatar
+POST   /player
+PUT    /player/:username
+DELETE /player/:username
+```
+
+### Работа
+Работу сервиса можно протестировать с помощью консольной утилиты `curl`
+
+- `GET /player/:username` (возвращает информацию о пользователе)
+Пример запроса:
+```bash
+$ curl http://localhost:9077/player/user
+```
+Пример ответа:
+```json
+{"username":"user","email":"email@email.email","gender":"male"}
+```
+
+- `GET /player` (возвращает информацию о нескольких пользователях, именя передаются в парметре запроса `usernames` через запятую)
+Пример запроса:
+```bash
+$ curl http://localhost:9077/player?usernames=user1,user2
+```
+Пример ответа:
+```json
+{"players":[{"username":"user1","email":"email@email.email","gender":"male"},{"username":"user2","email":"email@email.email","gender":"male"}]}
+```
+
+- `GET /player/:username/avatar` (возвращает аватар пользователя)
+Пример запроса:
+```bash
+$ curl http://localhost:9077/player/user/avatar
+```
+Пример ответа:
+![](images/example7.png)
+
+- `POST /player` (создаёт пользователя)
+Пример запроса без задания аватара (в данном случае, аватар назначится дефолтным ([default_avatar.png](https://github.com/fdr896/soa-mafia/tree/main/stat_manager/storage/filesystem/data/default_avatar.png))):
+```bash
+$ curl -X POST http://localhost:9077/player \
+  -F "username=user" \
+  -F "email=email@email.email" \
+  -F "gender=male" \
+  -H "Content-Type: multipart/form-data"
+```
+Пример запроса с заданным аватаром (нужно указать относительный путь до файла с аватаром):
+```bash
+$ curl -X POST http://localhost:9077/player \
+  -F "username=user_with_avatar" \
+  -F "email=avatars_email@email.email" \
+  -F "gender=male" \
+  -F "avatar=@avatar.jpeg" \
+  -H "Content-Type: multipart/form-data"
+```
+
+- `PUT /player/:username` (обновляет преданную информацию о пользователе; можно задавать не все поля):
+```bash
+$ curl -X PUT http://localhost:9077/player/user \
+  -F "email=a@b.c" \
+  -F "avatar=@avatar.png" \
+  -H "Content-Type: multipart/form-data"
+```
+
+- `DELETE /player/:username` (удаляет пользователя):
+```bash
+$ curl -X DELETE http://localhost:9077/player/user
+```
+
+Примеры запросов также можно посмотреть в [stat_manager/queries](https://github.com/fdr896/soa-mafia/tree/main/stat_manager/queries)
+
+### Валидация запросов
+Параметры запросов на создание пользователя и изменение пользовательской информации валидируются, поэтому `email` должен быть корректным email'ом, а `gender` должен быть равен либо `male`, либо `female`
+
+### Аватары
+Примеры аватаров лежат в [stat_manager/queries](https://github.com/fdr896/soa-mafia/tree/main/stat_manager/queries)

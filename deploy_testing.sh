@@ -2,9 +2,8 @@
 
 docker build -t fdr400/soa_mafia_driver_client:testing -f driver/client/cmd/Dockerfile .
 docker build -t fdr400/soa_mafia_driver_server:testing -f driver/server/cmd/Dockerfile .
-
-docker image tag soa_mafia_driver_client:testing fdr400/soa_mafia_driver_client:testing
-docker image tag soa_mafia_driver_server:testing fdr400/soa_mafia_driver_server:server
+docker build -t fdr400/soa_mafia_stat_manager:testing  -f stat_manager/cmd/Dockerfile .
 
 docker image push fdr400/soa_mafia_driver_client:testing
 docker image push fdr400/soa_mafia_driver_server:testing
+docker image push fdr400/soa_mafia_stat_manager:testing

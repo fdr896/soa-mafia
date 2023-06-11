@@ -1,7 +1,7 @@
 package main
 
 import (
-	"driver/support"
+	"common"
 	"log"
 	"math/rand"
 	"net"
@@ -54,7 +54,7 @@ const (
 		mafias = MAFIAS_DEFAULT
 	}
 
-	support.InitServerLogger()
+	common.InitServerLogger()
 
 	zlog.Info().
 	     Str("port", port).

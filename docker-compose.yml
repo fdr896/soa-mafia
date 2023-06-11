@@ -50,6 +50,18 @@ services:
       - server
     restart: always
 
+  stat_manager:
+    image: fdr400/soa_mafia_stat_manager
+    hostname: "mafia_stat_manager"
+    ports:
+      - 9077:9077/tcp
+    environment:
+      - STAT_MANAGER_PORT=9077
+      - STAT_MANAGER_READ_TIMEOUT_MS=5000
+      - STAT_MANAGER_WRITE_TIMEOUT_MS=5000
+      - STAT_MANAGER_DATABASE_FILE=players_storage.db
+    restart: on-failure
+
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: "rabbitmq"
