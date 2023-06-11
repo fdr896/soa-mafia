@@ -23,7 +23,7 @@ func (i *interactor) Commands() <-chan *Command {
 func (i *interactor) Start() string {
     fmt.Printf(`
 Hello!
-Your are connected to the grpc-mafia server! Here you can play mafia!!!
+You are connected to the grpc-mafia server! Here you can play mafia!!!
 - Type 'start' to connect to random game session
 - Type 'exit' to end the game
 `)

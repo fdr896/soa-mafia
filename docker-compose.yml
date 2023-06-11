@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 x-rabbimq-env: &rabbitmq-env
   RABBITMQ_USER: guest
@@ -13,7 +13,7 @@ x-client-env: &client-env
 
 services:
   server:
-    image: fdr400/soa_mafia_driver_server:testing
+    image: fdr400/soa_mafia_driver_server
     hostname: "mafia_server"
     ports:
       - 9000:9000/tcp
@@ -24,11 +24,12 @@ services:
       - STAT_MANAGER_HOST=mafia_stat_manager
       - STAT_MANAGER_PORT=9077
     depends_on:
-      - stat_manager
+      rabbitmq:
+        condition: service_healthy
     restart: on-failure
 
   bot1:
-    image: fdr400/soa_mafia_driver_client:testing
+    image: fdr400/soa_mafia_driver_client
     environment:
       USERNAME: bot1
       <<: *client-env
@@ -38,7 +39,7 @@ services:
     restart: always
 
   bot2:
-    image: fdr400/soa_mafia_driver_client:testing
+    image: fdr400/soa_mafia_driver_client
     environment:
       USERNAME: bot2
       <<: *client-env
@@ -48,7 +49,7 @@ services:
     restart: always
 
   bot3:
-    image: fdr400/soa_mafia_driver_client:testing
+    image: fdr400/soa_mafia_driver_client
     environment:
       USERNAME: bot3
       <<: *client-env
@@ -58,7 +59,7 @@ services:
     restart: always
 
   stat_manager:
-    image: fdr400/soa_mafia_stat_manager:testing
+    image: fdr400/soa_mafia_stat_manager
     hostname: "mafia_stat_manager"
     ports:
       - 9077:9077/tcp
@@ -70,7 +71,8 @@ services:
       <<: *rabbitmq-env
     restart: on-failure
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -80,8 +82,8 @@ services:
         - 5672:5672
         - 15672:15672
     healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:15672"]
-        interval: 30s
-        timeout: 10s
+        test: ["CMD", "nc", "-z", "localhost", "5672"]
+        interval: 5s
+        timeout: 5s
         retries: 5
 

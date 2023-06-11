@@ -3,11 +3,16 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"stat_manager/server"
 
 	zlog "github.com/rs/zerolog/log"
+)
+
+const (
+	updateStatRoute = "internal/player"
 )
 
 type StatClient struct {
@@ -28,7 +33,9 @@ func (sc *StatClient) UpdatePlayerStat(stat *server.PlayerStat) error {
 		return err
 	}
 
-	resp, err := http.Post(sc.serverEndpoint, "application/json", bytes.NewBuffer(statBytes))
+	route := sc.getUserUpdateStatRoute(stat)
+	zlog.Debug().Str("route", route).Msg("sending request")
+	resp, err := http.Post(route, "application/json", bytes.NewBuffer(statBytes))
 	if err != nil {
 		return err
 	}
@@ -36,4 +43,8 @@ func (sc *StatClient) UpdatePlayerStat(stat *server.PlayerStat) error {
 	zlog.Info().Str("status", resp.Status).Msg("update stat")
 
 	return nil
+}
+
+func (sc *StatClient) getUserUpdateStatRoute(stat *server.PlayerStat) string {
+	return fmt.Sprintf("%s/%s/%s", sc.serverEndpoint, updateStatRoute, stat.Username)
 }
