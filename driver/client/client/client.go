@@ -2,9 +2,9 @@ package client
 
 import (
 	"chat"
+	"common"
 	"context"
 	mafiapb "driver/server/proto"
-	"driver/support"
 	"sync"
 	"time"
 
@@ -69,7 +69,7 @@ func newClient(
     conn *grpc.ClientConn,
     rabbitmqConnParams *chat.RabbitmqConnectionParams) (*client, error) {
 
-    if err := support.InitClientLogger(username, mode == "auto");  err != nil {
+    if err := common.InitClientLogger(username, mode == "auto");  err != nil {
         return nil, err
     }
 

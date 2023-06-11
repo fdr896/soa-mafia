@@ -2,6 +2,7 @@ package main
 
 import (
 	"chat"
+	"common"
 	"context"
 	"driver/client/client"
 	"fmt"
@@ -30,7 +31,7 @@ const (
 func main() {
     rand.Seed(time.Now().UnixNano())
 
-	mode := getEnvOrDefault("CLIENT_MODE", CLIENT_MODE_DEFAULT)
+	mode := common.GetEnvOrDefault("CLIENT_MODE", CLIENT_MODE_DEFAULT)
     if mode != "manual" && mode != "auto" {
         fmt.Println("Wrong mode")
         log.Fatalln("Set up CLIENT_MODE to 'manual' or 'auto'")
@@ -40,8 +41,8 @@ func main() {
     if len(username) == 0 && mode == "auto" {
         log.Fatalln("Set up not empty USERNAME for bot")
     }
-    serverPort := getEnvOrDefault("SERVER_PORT", SERVER_PORT_DEFAULT)
-    serverHost := getEnvOrDefault("SERVER_HOST", SERVER_HOST_DEFAULT)
+    serverPort := common.GetEnvOrDefault("SERVER_PORT", SERVER_PORT_DEFAULT)
+    serverHost := common.GetEnvOrDefault("SERVER_HOST", SERVER_HOST_DEFAULT)
     if len(serverHost) == 0 {
         serverHost = "localhost"
     }
@@ -59,10 +60,10 @@ func main() {
     fmt.Printf("connected to grpc server on endpoint [%s]\n", serverEndpoint)
 
 	rabbitmqConnParams := chat.NewRabbitmqConnectionParams(
-		getEnvOrDefault("RABBITMQ_USER", RABBITMQ_USER_DEFAULT),
-		getEnvOrDefault("RABBITMQ_PASSWORD", RABBITMQ_PASSWORD_DEFAULT),
-		getEnvOrDefault("RABBITMQ_HOSTNAME", RABBITMQ_HOSTNAME_DEFAULT),
-		getEnvOrDefault("RABBITMQ_PORT", RABBITMQ_PORT_DEFAULT),
+		common.GetEnvOrDefault("RABBITMQ_USER", RABBITMQ_USER_DEFAULT),
+		common.GetEnvOrDefault("RABBITMQ_PASSWORD", RABBITMQ_PASSWORD_DEFAULT),
+		common.GetEnvOrDefault("RABBITMQ_HOSTNAME", RABBITMQ_HOSTNAME_DEFAULT),
+		common.GetEnvOrDefault("RABBITMQ_PORT", RABBITMQ_PORT_DEFAULT),
 	)
 
     client, err  := func() (client.IClient, error) {
@@ -85,12 +86,4 @@ func main() {
     if err := client.StartPlaying(); err != nil {
         log.Fatalf("error occured when playing: %s\n", err.Error())
     }
-}
-
-func getEnvOrDefault(envName, defaultValue string) string {
-	if envValue, set := os.LookupEnv(envName); set {
-		return envValue
-	} else {
-		return defaultValue
-	}
 }
